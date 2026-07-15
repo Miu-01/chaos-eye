@@ -1,334 +1,642 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>光影拼图：混沌之眼</title>
-<style type="text/css">
-  body { margin:0; padding:0; background:#0a0a1a; color:#e0e0e0; font-family:Arial,Helvetica,sans-serif; text-align:center; -webkit-user-select:none; user-select:none; }
-  h1 { font-size:18px; color:#7ef0ff; margin:10px 0 5px 0; }
-  .subtitle { font-size:12px; color:#888; }
-  .info { font-size:14px; margin:8px 0; }
-  canvas#main { width:300px; height:300px; background:#111128; border:1px solid #333; display:block; margin:0 auto; position:relative; }
-  .guide { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.85); padding:12px 20px; border-radius:8px; font-size:14px; color:#7ef0ff; z-index:10; animation:fadeOut 3s forwards; pointer-events:none; }
-  @keyframes fadeOut { 0%{opacity:1;} 70%{opacity:1;} 100%{opacity:0; display:none;} }
-  .options { width:320px; margin:15px auto; overflow:hidden; min-height:100px; } /* 加最小高度，避免加载时空晃 */
-  .opt-canvas { width:90px; height:90px; background:#18183a; border:2px solid #444; float:left; margin:5px; transition:transform 0.1s; }
-  .opt-canvas:active { transform:scale(0.95); }
-  .opt-canvas.correct { border-color:#4f4; background:#1a3a1a; animation:correctFlash 0.3s; }
-  .opt-canvas.wrong { border-color:#f44; background:#3a1a1a; animation:wrongShake 0.3s; }
-  @keyframes correctFlash { 0%{box-shadow:0 0 0 rgba(79,255,79,0);} 50%{box-shadow:0 0 15px rgba(79,255,79,0.8);} 100%{box-shadow:0 0 0 rgba(79,255,79,0);} }
-  @keyframes wrongShake { 0%{transform:translateX(0);} 25%{transform:translateX(-5px);} 50%{transform:translateX(5px);} 75%{transform:translateX(-5px);} 100%{transform:translateX(0);} }
-  button { padding:10px 30px; background:#7ef0ff22; color:#7ef0ff; border:1px solid #7ef0ff55; font-size:16px; margin-top:10px; }
-  .level-tag { display:inline-block; padding:2px 8px; font-size:12px; margin-left:5px; border-radius:4px; }
-  .lv0 { background:#1a3a2a; color:#7fff7f; }
-  .lv1 { background:#1a3a1a; color:#4f4; }
-  .lv2 { background:#3a3a1a; color:#ff4; }
-  #msg { font-size:14px; color:#aaa; height:20px; margin-top:5px; }
-  .encourage { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.9); padding:20px; border-radius:10px; font-size:16px; color:#7ef0ff; z-index:20; display:none; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👀 眼力大挑战 · Bug修复版</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0; padding: 0;
+            background: #0c0c1c;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .header {
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(180deg, #1a1a38, #0c0c1c);
+            box-shadow: 0 3px 12px rgba(0,0,0,0.6);
+        }
+        h1 {
+            margin: 0;
+            font-size: 26px;
+            letter-spacing: 2px;
+        }
+        .subtitle {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-top: 6px;
+        }
+        .game-wrap {
+            flex: 1;
+            width: 100%;
+            max-width: 620px;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .info-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        .level-label {
+            background: #ff5a5a;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .score-label {
+            background: #28a745;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .time-label {
+            background: #991111;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .time-warning {
+            animation: flash 0.5s infinite;
+        }
+        @keyframes flash {
+            0% { opacity:1; }
+            50% { opacity:0.2; }
+            100% { opacity:1; }
+        }
+        /* 辨色网格 */
+        .color-grid {
+            display: grid;
+            gap: 6px;
+            margin: 12px 0 24px;
+        }
+        .color-cell {
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.18s ease;
+            border: 2px solid transparent;
+        }
+        /* 图案画布容器 */
+        .find-pattern-box {
+            position: relative;
+            margin: 12px 0 24px;
+            border: 3px solid #444477;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        #patternCanvas {
+            display: block;
+            cursor: pointer;
+            width: 100%;
+        }
+        .color-cell:hover, #patternCanvas:hover {
+            transform: scale(1.02);
+        }
+        .correct {
+            border-color: #4ce04c !important;
+            box-shadow: 0 0 16px #3f3 !important;
+            animation: pop 0.3s;
+        }
+        .wrong {
+            border-color: #f33 !important;
+            box-shadow: 0 0 16px #f33 !important;
+            animation: shake 0.4s;
+        }
+        .found-mark {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #4f4;
+            border-radius: 50%;
+            pointer-events: none;
+            box-shadow: 0 0 10px #3f3;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.12); }
+            100% { transform: scale(1); }
+        }
+        @keyframes shake {
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+        .msg-text {
+            font-size: 24px;
+            font-weight: bold;
+            height: 32px;
+            margin: 8px 0 20px;
+            text-shadow: 0 0 6px currentColor;
+        }
+        .control-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding-bottom: 30px;
+        }
+        button {
+            background: #444477;
+            color: white;
+            border: none;
+            padding: 12px 26px;
+            border-radius: 7px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #6060aa;
+        }
+        .tip-text {
+            opacity: 0.6;
+            font-size: 14px;
+            text-align: center;
+        }
+        .modal-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.92);
+            padding: 32px 50px;
+            border-radius: 16px;
+            border: 2px solid #fff;
+            font-size: 28px;
+            display: none;
+            z-index: 999;
+            cursor: pointer;
+            box-shadow: 0 0 60px rgba(255,255,255,0.15);
+            text-align: center;
+        }
+        .modal-hint button {
+            margin-top:20px;
+        }
+        /* 手机适配 */
+        @media(max-width:420px) {
+            h1 { font-size: 20px; }
+            .modal-hint {
+                padding: 20px 24px;
+                font-size: 20px;
+            }
+            .find-pattern-box {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
-<h1>光影拼图：混沌之眼</h1>
-<div class="subtitle">颜色是辅助线索，形状才是核心哦～</div>
-<div class="info">
-  关卡 <span id="levelNum">1</span>
-  <span class="level-tag lv0" id="lvTag">Lv.0 新手教学</span>
-</div>
-<div style="position:relative; width:300px; margin:0 auto;">
-  <canvas id="main" width="300" height="300"></canvas>
-  <div class="guide" id="guide">👀 记住闪烁的颜色+形状特征！</div>
-</div>
-<div class="options" id="opts"></div>
-<div id="msg"></div>
-<button onclick="nextLevel()">下一关</button>
-<div class="encourage" id="encourage"></div>
+    <div class="header">
+        <h1>👀 眼力大挑战 · 灵活限时</h1>
+        <div class="subtitle">每关独立自定义限时，答对自动下一关，答错/超时直接结算</div>
+    </div>
+    <div class="game-wrap">
+        <div class="info-row">
+            <div class="score-label" id="scoreTag">得分：0</div>
+            <div class="level-label" id="levelTag">Lv.0 入门·辨色</div>
+            <div class="time-label" id="timeTag">剩余：30s</div>
+        </div>
+        <!-- 辨色网格 -->
+        <div class="color-grid" id="gridBox"></div>
+        <!-- 找图案画布容器 -->
+        <div class="find-pattern-box" id="patternBox" style="display:none;">
+            <canvas id="patternCanvas"></canvas>
+            <div id="markContainer"></div>
+        </div>
+        <div class="msg-text" id="msgBox"></div>
+        <div class="control-bar">
+            <span class="tip-text" id="tipText">找出唯一一个颜色不同的方块</span>
+        </div>
+    </div>
+    <div class="modal-hint" id="modalTip"></div>
 
-<script type="text/javascript">
-var canvas = document.getElementById("main");
-var ctx = canvas.getContext("2d");
-var CENTER = {x:150, y:130};
-var currentLevel = 0;
-var state = "flash";
-var optsData = [];
-var guideShown = false;
-var flashTimer = null; // 👉 新增：存闪烁定时器的ID，用来清除旧定时器
+    <script>
+        // 关卡配置：timeLimit 每关独立自定义时长，无强制递减
+        const LEVEL_CONFIG = [
+            // Lv0 入门辨色
+            { type:0,name:"入门·辨色",row:2,col:2,hueDiff:40,sat:75,light:55,tip:"找出唯一一个颜色不同的方块",timeLimit:18 },
+            // Lv1 第二关 找2个四叶草（修复点击bug）
+            { type:1,name:"入门·找四叶草",grid:7,basePattern:0,rareCount:2,patternSize:16,tip:"在一堆三叶草里找到2个四叶草",timeLimit:35 },
+            { type:0,name:"简单·辨色",row:3,col:3,hueDiff:22,sat:70,light:52,tip:"色差变小，仔细观察",timeLimit:16 },
+            { type:1,name:"简单·斑点蘑菇",grid:8,basePattern:1,rareCount:2,patternSize:14,tip:"普通蘑菇堆里找出2个带斑点稀有蘑菇",timeLimit:32 },
+            { type:0,name:"普通·辨色",row:4,col:4,hueDiff:12,sat:65,light:50,tip:"色差细微，集中注意力",timeLimit:14 },
+            { type:1,name:"普通·空心星星",grid:9,basePattern:2,rareCount:3,patternSize:12,tip:"实心星星里找出3个空心稀有星",timeLimit:40 },
+            { type:0,name:"困难·辨色",row:5,col:5,hueDiff:6,sat:60,light:48,tip:"色差极小，需要长时间分辨",timeLimit:12 },
+            { type:1,name:"困难·双层爱心",grid:10,basePattern:3,rareCount:3,patternSize:10,tip:"普通爱心堆里找到3个双层稀有爱心",timeLimit:36 },
+            { type:0,name:"大师·辨色",row:6,col:6,hueDiff:3,sat:55,light:46,tip:"几乎同色，考验极限色感",timeLimit:10 },
+            { type:1,name:"大师·混合稀有",grid:11,basePattern:Math.floor(Math.random()*4),rareCount:3,patternSize:8,tip:"海量同类图案，找出全部稀有款",timeLimit:42 },
+            { type:0,name:"极限·辨色",row:7,col:7,hueDiff:1.2,sat:50,light:44,tip:"肉眼很难区分的微弱色差",timeLimit:9 },
+            { type:1,name:"极限·迷你稀有",grid:12,basePattern:Math.floor(Math.random()*4),rareCount:3,patternSize:6,tip:"图案极小，和背景高度融合，找齐3个稀有图案",timeLimit:45 },
+        ];
 
-var FEATURE_CONFIG = [
-  { type:0, name:"尖刺", color:"#ff4d4f", lightColor:"rgba(255,77,79,0.2)" },
-  { type:1, name:"凹槽", color:"#1890ff", lightColor:"rgba(24,144,255,0.2)" },
-  { type:2, name:"圆角", color:"#faad14", lightColor:"rgba(250,173,20,0.2)" },
-  { type:3, name:"凸起", color:"#52c41a", lightColor:"rgba(82,196,26,0.2)" }
-];
+        let currentLv = 0;
+        let state = "ready";
+        let clickLock = false;
+        let totalScore = 0;
+        // 计时变量
+        let timer = null;
+        let remainTime = 0;
+        // 辨色关卡变量
+        let targetIndex = -1;
+        let baseHue = 0;
+        // 图案关卡全局变量
+        let canvasCtx = null;
+        const canvasFixedSize = 420;
+        let rareTargets = [];
+        let foundCount = 0;
+        let totalRare = 0;
+        let markContainer = null;
 
-var DIFFICULTY = [
-  { name:'Lv.0 新手教学', tagClass:'lv0', flash:2000, options:3, rotate:false, mirror:false, colorSaturation:1, desc:'无旋转/无镜像，颜色+形状双线索，先练手～' },
-  { name:'Lv.1 静止时光', tagClass:'lv1', flash:1500, options:4, rotate:false, mirror:false, colorSaturation:0.5, desc:'无旋转，颜色变淡，主要靠形状哦～' },
-  { name:'Lv.2 流光溢彩', tagClass:'lv2', flash:1000, options:6, rotate:true, mirror:false, colorSaturation:0.1, desc:'碎片会旋转，颜色几乎消失，纯考形状！' }
-];
+        // HSL转十六进制颜色
+        function hslToHex(h, s, l) {
+            h /= 360;
+            s /= 100;
+            l /= 100;
+            let r, g, b;
+            if (s === 0) r = g = b = l;
+            else {
+                const hue2rgb = (p, q, t) => {
+                    if(t < 0) t += 1;
+                    if(t > 1) t -= 1;
+                    if(t < 1/6) return p + (q-p)*6*t;
+                    if(t < 1/2) return q;
+                    if(t < 2/3) return p + (q-p)*(2/3-t)*6;
+                    return p;
+                }
+                const q = l < 0.5 ? l*(1+s) : l+s-l*s;
+                const p = 2*l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+            const toHex = x => Math.round(x*255).toString(16).padStart(2, "0");
+            return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+        }
 
-// 生成带特征和颜色的缺口
-function createFeaturePiece(sides, radius, gapIdx, featureType) {
-  var pts = [];
-  for (var i=0; i<sides; i++) {
-    var a = (Math.PI*2*i/sides) - Math.PI/2;
-    pts.push({x:CENTER.x + radius*Math.cos(a), y:CENTER.y + radius*Math.sin(a)});
-  }
-  var p0 = pts[gapIdx];
-  var p1 = pts[(gapIdx+1)%sides];
-  var mid = {x:(p0.x+p1.x)/2, y:(p0.y+p1.y)/2};
-  var config = FEATURE_CONFIG[featureType];
-  var piece = [];
-  
-  switch(featureType) {
-    case 0: // 尖刺
-      var tip = {x:mid.x + (mid.x-CENTER.x)/radius*42, y:mid.y + (mid.y-CENTER.y)/radius*42};
-      piece = [p0, tip, p1];
-      break;
-    case 1: // 凹槽
-      var inner = {x:mid.x + (mid.x-CENTER.x)/radius*20, y:mid.y + (mid.y-CENTER.y)/radius*20};
-      piece = [p0, inner, p1];
-      break;
-    case 2: // 圆角
-      var tip = {x:mid.x + (mid.x-CENTER.x)/radius*32, y:mid.y + (mid.y-CENTER.y)/radius*32};
-      piece = [p0, tip, p1];
-      break;
-    case 3: // 凸起
-      var bump = {x:mid.x + (mid.x-CENTER.x)/radius*25, y:mid.y + (mid.y-CENTER.y)/radius*25};
-      piece = [p0, bump, p1];
-      break;
-  }
-  
-  return {
-    outline: pts, piece: piece, featureType: featureType,
-    color: config.color, lightColor: config.lightColor, isRoundCorner: featureType === 2
-  };
-}
+        // 绘制4套基础图案 + 对应稀有变异款
+        function drawPlant(ctx, x, y, size, baseType, isRare, hue) {
+            ctx.save();
+            ctx.translate(x, y);
+            const rotateRad = Math.random() * Math.PI * 2;
+            const scaleRate = 0.88 + Math.random() * 0.24;
+            ctx.rotate(rotateRad);
+            ctx.scale(scaleRate, scaleRate);
+            const mainColor = hslToHex(hue, 75, 38);
+            const lightColor = hslToHex(hue + 12, 80, 52);
+            const darkColor = hslToHex(hue - 10, 70, 28);
+            ctx.lineWidth = 1.2;
+            ctx.strokeStyle = "#111";
+            const s = size;
 
-// 绘制带颜色的碎片（修复了圆角参数错误！）
-function drawPiece(targetCtx, pieceData, cx, cy, scaleX, scaleY, rotDeg, isFlash, saturation) {
-  targetCtx.save();
-  targetCtx.translate(cx, cy);
-  targetCtx.rotate(rotDeg * Math.PI/180);
-  targetCtx.scale(scaleX, scaleY);
-  targetCtx.translate(-cx, -cy);
-  
-  // 颜色饱和度处理
-  var color = pieceData.lightColor;
-  if (saturation < 1) {
-    var r = parseInt(pieceData.lightColor.match(/\d+/g)[0]);
-    var g = parseInt(pieceData.lightColor.match(/\d+/g)[1]);
-    var b = parseInt(pieceData.lightColor.match(/\d+/g)[2]);
-    var a = parseFloat(pieceData.lightColor.match(/[\d.]+$/)[0]);
-    var gray = 0.299*r + 0.587*g + 0.114*b;
-    r = gray + (r - gray)*saturation;
-    g = gray + (g - gray)*saturation;
-    b = gray + (b - gray)*saturation;
-    color = `rgba(${r},${g},${b},${a})`;
-  }
-  targetCtx.fillStyle = isFlash ? pieceData.color : color;
-  
-  targetCtx.beginPath();
-  var piece = pieceData.piece;
-  targetCtx.moveTo(piece[0].x, piece[0].y);
-  
-  for (var i=1; i<piece.length; i++) {
-    if (pieceData.isRoundCorner && i === 1) {
-      // 👉 修复：圆角贝塞尔曲线参数写反的问题
-      var prev = piece[i-1];
-      var curr = piece[i];
-      var cpX = (prev.x + curr.x) / 2;
-      var cpY = (prev.y + curr.y) / 2;
-      targetCtx.quadraticCurveTo(cpX, cpY, curr.x, curr.y); // 正确参数：控制点→终点
-    } else {
-      targetCtx.lineTo(piece[i].x, piece[i].y);
-    }
-  }
-  targetCtx.closePath();
-  targetCtx.fill();
-  targetCtx.restore();
-}
+            switch(baseType) {
+                case 0:
+                    const leaf = (lx, ly) => {
+                        ctx.beginPath();
+                        ctx.ellipse(lx, ly, s*0.32, s*0.42, 0, 0, Math.PI*2);
+                        ctx.fillStyle = lightColor;
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                    leaf(0, -s*0.35);
+                    leaf(-s*0.3, s*0.18);
+                    leaf(s*0.3, s*0.18);
+                    if(isRare) leaf(0, s*0.32);
+                    ctx.beginPath();
+                    ctx.moveTo(0, s*0.18);
+                    ctx.lineTo(0, s*0.6);
+                    ctx.strokeStyle = darkColor;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    break;
+                case 1:
+                    ctx.beginPath();
+                    ctx.ellipse(0, -s*0.25, s*0.55, s*0.38, 0, Math.PI, Math.PI*2);
+                    ctx.fillStyle = mainColor;
+                    ctx.fill();
+                    ctx.stroke();
+                    if(isRare) {
+                        ctx.fillStyle = "#fff";
+                        ctx.beginPath();
+                        ctx.arc(-s*0.22, -s*0.32, s*0.09, 0, Math.PI*2);
+                        ctx.arc(s*0.18, -s*0.28, s*0.07, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                    ctx.fillStyle = lightColor;
+                    ctx.fillRect(-s*0.16, -s*0.02, s*0.32, s*0.55);
+                    ctx.strokeRect(-s*0.16, -s*0.02, s*0.32, s*0.55);
+                    break;
+                case 2:
+                    ctx.beginPath();
+                    for(let i=0;i<5;i++){
+                        const ang = Math.PI/2 + i*Math.PI*2/5;
+                        const px = Math.cos(ang)*s*0.45;
+                        const py = Math.sin(ang)*s*0.45;
+                        i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+                    }
+                    ctx.closePath();
+                    if(isRare) {
+                        ctx.strokeStyle = mainColor;
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    } else {
+                        ctx.fillStyle = mainColor;
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                    break;
+                case 3:
+                    ctx.beginPath();
+                    ctx.moveTo(0, s*0.22);
+                    ctx.bezierCurveTo(-s*0.42,-s*0.42,-s*0.82,0,0,s*0.52);
+                    ctx.bezierCurveTo(s*0.82,0,s*0.42,-s*0.42,0,s*0.22);
+                    ctx.fillStyle = mainColor;
+                    ctx.fill();
+                    ctx.stroke();
+                    if(isRare) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, s*0.08);
+                        ctx.bezierCurveTo(-s*0.2,-s*0.18,-s*0.38,0,0,s*0.22);
+                        ctx.bezierCurveTo(s*0.38,0,s*0.2,-s*0.18,0,s*0.08);
+                        ctx.fillStyle = lightColor;
+                        ctx.fill();
+                    }
+                    break;
+            }
+            ctx.restore();
+        }
 
-// 👉 核心修复1：生成关卡时先清掉旧定时器和旧选项
-function generateLevel(lv) {
-  // 清除上一个关卡的闪烁定时器，避免残留
-  if (flashTimer) { clearInterval(flashTimer); flashTimer = null; }
-  // 立即清空选项区，避免旧内容残留
-  document.getElementById("opts").innerHTML = "";
-  
-  var diff = DIFFICULTY[Math.min(lv, DIFFICULTY.length-1)];
-  document.getElementById("levelNum").innerHTML = lv+1;
-  document.getElementById("lvTag").innerHTML = diff.name;
-  document.getElementById("lvTag").className = "level-tag " + diff.tagClass;
-  document.getElementById("msg").innerHTML = diff.desc;
-  
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  state = "flash";
-  
-  var sides = lv === 0 ? 4 : 4 + Math.floor(Math.random()*2);
-  var gapIdx = Math.floor(Math.random()*sides);
-  var featureType = lv === 0 ? lv % 4 : Math.floor(Math.random()*4);
-  var puzzle = createFeaturePiece(sides, 70, gapIdx, featureType);
-  
-  var answerRot = diff.rotate ? [0,90,180,270][Math.floor(Math.random()*4)] : 0;
-  var answerMir = diff.mirror ? Math.random()>0.5 : false;
-  
-  // 画轮廓
-  ctx.setLineDash([6,4]);
-  ctx.strokeStyle = "#7ef0ff88";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(puzzle.outline[0].x, puzzle.outline[0].y);
-  for (var i=1; i<puzzle.outline.length; i++) ctx.lineTo(puzzle.outline[i].x, puzzle.outline[i].y);
-  ctx.closePath();
-  ctx.stroke();
-  ctx.setLineDash([]);
-  
-  // 闪烁逻辑
-  var flashCount = 0;
-  var flashMax = diff.flash / 250 * 2;
-  flashTimer = setInterval(function(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    // 重画轮廓
-    ctx.setLineDash([6,4]);
-    ctx.strokeStyle = "#7ef0ff88";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(puzzle.outline[0].x, puzzle.outline[0].y);
-    for (var i=1; i<puzzle.outline.length; i++) ctx.lineTo(puzzle.outline[i].x, puzzle.outline[i].y);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.setLineDash([]);
-    
-    if (flashCount % 2 === 0) {
-      drawPiece(ctx, puzzle, CENTER.x, CENTER.y, 1, 1, 0, true, diff.colorSaturation);
-    }
-    flashCount++;
-    if (flashCount > flashMax) {
-      clearInterval(flashTimer);
-      flashTimer = null;
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.setLineDash([6,4]);
-      ctx.strokeStyle = "#7ef0ff88";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(puzzle.outline[0].x, puzzle.outline[0].y);
-      for (var i=1; i<puzzle.outline.length; i++) ctx.lineTo(puzzle.outline[i].x, puzzle.outline[i].y);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.setLineDash([]);
-      state = "choose";
-      buildOptions(puzzle, diff, answerRot, answerMir, lv);
-    }
-  }, 250);
-  
-  // 显示引导
-  if (!guideShown) {
-    document.getElementById("guide").style.display = "block";
-    setTimeout(function(){document.getElementById("guide").style.display = "none";}, 3000);
-    guideShown = true;
-  }
-}
+        // 清空所有计时器（修复多定时器叠加bug）
+        function stopTimer() {
+            if(timer) clearInterval(timer);
+            timer = null;
+        }
 
-// 构建选项（确保生成正确数量的选项）
-function buildOptions(puzzle, diff, aRot, aMir, lv) {
-  var optsEl = document.getElementById("opts");
-  optsEl.innerHTML = ""; // 再次清空，双重保险
-  optsData = [];
-  var n = diff.options;
-  
-  // 正确答案
-  optsData.push({piece:puzzle, rot:aRot, mir:aMir, isAnswer:true});
-  
-  // 生成干扰项
-  while (optsData.length < n) {
-    var fakeRot = diff.rotate ? [0,90,180,270][Math.floor(Math.random()*4)] : 0;
-    var fakeMir = diff.mirror ? Math.random()>0.5 : false;
-    var fakeFeatureType = Math.random() < 0.3 ? puzzle.featureType : (puzzle.featureType + 1 + Math.floor(Math.random()*3)) % 4;
-    var fakeSides = puzzle.outline.length;
-    var fakeGapIdx = Math.floor(Math.random()*fakeSides);
-    var fakePuzzle = createFeaturePiece(fakeSides, 70, fakeGapIdx, fakeFeatureType);
-    
-    // 轻微变形
-    var fp = JSON.parse(JSON.stringify(fakePuzzle.piece));
-    var deformIdx = Math.floor(fp.length/2);
-    fp[deformIdx].x += (Math.random()-0.5)*10;
-    fp[deformIdx].y += (Math.random()-0.5)*10;
-    
-    optsData.splice(Math.floor(Math.random()*(optsData.length+1)), 0, {
-      piece:{...fakePuzzle, piece:fp}, rot:fakeRot, mir:fakeMir, isAnswer:false
-    });
-  }
-  
-  // 渲染选项（现在肯定能画出内容了）
-  for (var i=0; i<optsData.length; i++) {
-    var od = optsData[i];
-    var c = document.createElement("canvas");
-    c.className = "opt-canvas";
-    c.width = 80; c.height = 80;
-    c.setAttribute("data-index", i);
-    
-    var pc = c.getContext("2d");
-    pc.fillStyle = "#18183a";
-    pc.fillRect(0,0,80,80);
-    
-    var cx=40, cy=40, scale=0.55;
-    var scaled = od.piece.piece.map(p=>({
-      x:cx + (p.x-CENTER.x)*scale,
-      y:cy + (p.y-CENTER.y)*scale
-    }));
-    
-    drawPiece(pc, {...od.piece, piece:scaled}, cx, cy, od.mir?-scale:scale, scale, od.rot, false, DIFFICULTY[Math.min(currentLevel, DIFFICULTY.length-1)].colorSaturation);
-    
-    c.onclick = function(){handleChoose(parseInt(this.getAttribute("data-index")));};
-    c.ontouchstart = function(e){e.preventDefault(); handleChoose(parseInt(this.getAttribute("data-index")));};
-    optsEl.appendChild(c);
-  }
-}
+        // 启动倒计时
+        function startTimer(sec) {
+            stopTimer();
+            remainTime = sec;
+            updateTimeUI();
+            timer = setInterval(()=>{
+                remainTime--;
+                updateTimeUI();
+                // 超时判定，强制结束游戏
+                if(remainTime <= 0) {
+                    stopTimer();
+                    if(state === "playing") {
+                        state = "timeout";
+                        clickLock = true;
+                        document.getElementById("msgBox").innerText = "⏰ 时间耗尽，挑战结束";
+                        document.getElementById("msgBox").style.color = "#f44";
+                        setTimeout(gameOver, 800);
+                    }
+                }
+            }, 1000);
+        }
 
-function handleChoose(idx) {
-  if (state !== "choose") return;
-  state = "done";
-  var items = document.querySelectorAll(".opt-canvas");
-  var msg = document.getElementById("msg");
-  var encourage = document.getElementById("encourage");
-  
-  for (var i=0; i<items.length; i++) {
-    var item = items[i];
-    var dataIdx = parseInt(item.getAttribute("data-index"));
-    if (optsData[dataIdx].isAnswer) {
-      item.className = "opt-canvas correct";
-    } else if (dataIdx === idx) {
-      item.className = "opt-canvas wrong";
-    }
-    item.onclick = null;
-    item.ontouchstart = null;
-  }
-  
-  if (optsData[idx].isAnswer) {
-    msg.innerHTML = "✅ 正确！";
-    msg.style.color = "#4f4";
-    if (currentLevel === 0) {
-      encourage.innerHTML = "🎉 眼力不错！<br>接下来颜色会变淡，要靠形状哦～";
-      encourage.style.display = "block";
-      setTimeout(function(){encourage.style.display="none";}, 2000);
-    }
-  } else {
-    msg.innerHTML = "❌ 不对，再看看？";
-    msg.style.color = "#f44";
-  }
-}
+        // 更新倒计时显示 + 5秒闪烁警告
+        function updateTimeUI() {
+            const timeDom = document.getElementById("timeTag");
+            timeDom.innerText = `剩余：${remainTime}s`;
+            if(remainTime <=5) {
+                timeDom.classList.add("time-warning");
+            } else {
+                timeDom.classList.remove("time-warning");
+            }
+        }
 
-// 👉 核心修复2：点下一关时，如果还在闪烁，直接终止当前动画，立即进下一关
-function nextLevel() {
-  if (flashTimer) { clearInterval(flashTimer); flashTimer = null; }
-  document.getElementById("msg").innerHTML = "";
-  currentLevel++;
-  generateLevel(currentLevel);
-}
+        // 生成辨色关卡
+        function createColorLevel(cfg) {
+            stopTimer();
+            document.getElementById("gridBox").style.display = "grid";
+            document.getElementById("patternBox").style.display = "none";
+            state = "playing";
+            clickLock = false;
+            document.getElementById("levelTag").innerText = `Lv.${currentLv} ${cfg.name}`;
+            document.getElementById("tipText").innerText = cfg.tip;
+            document.getElementById("msgBox").innerText = "";
+            document.getElementById("msgBox").style.color = "#fff";
+            const gridWrap = document.getElementById("gridBox");
+            gridWrap.innerHTML = "";
+            gridWrap.style.gridTemplateRows = `repeat(${cfg.row}, 1fr)`;
+            gridWrap.style.gridTemplateColumns = `repeat(${cfg.col}, 1fr)`;
+            const cellMax = Math.min(48, Math.floor(540 / Math.max(cfg.row, cfg.col)));
+            baseHue = Math.floor(Math.random() * 360);
+            const total = cfg.row * cfg.col;
+            targetIndex = Math.floor(Math.random() * total);
+            for(let i = 0; i < total; i++) {
+                const cell = document.createElement("div");
+                cell.className = "color-cell";
+                cell.style.width = `${cellMax}px`;
+                cell.style.height = `${cellMax}px`;
+                let color;
+                if(i === targetIndex) {
+                    const offset = Math.random() > 0.5 ? cfg.hueDiff : -cfg.hueDiff;
+                    color = hslToHex(baseHue + offset, cfg.sat, cfg.light);
+                } else {
+                    color = hslToHex(baseHue, cfg.sat, cfg.light);
+                }
+                cell.style.background = color;
+                cell.dataset.id = i;
+                cell.onclick = () => handleColorClick(i);
+                gridWrap.appendChild(cell);
+            }
+            startTimer(cfg.timeLimit);
+        }
 
-// 初始化
-setTimeout(function(){generateLevel(0);}, 500);
-</script>
+        // 生成海量同类图案关卡 + 修复画布坐标点击bug
+        function createFindPatternLevel(cfg) {
+            stopTimer();
+            document.getElementById("gridBox").style.display = "none";
+            document.getElementById("patternBox").style.display = "block";
+            state = "playing";
+            clickLock = false;
+            foundCount = 0;
+            rareTargets = [];
+            markContainer = document.getElementById("markContainer");
+            markContainer.innerHTML = "";
+            document.getElementById("levelTag").innerText = `Lv.${currentLv} ${cfg.name}`;
+            document.getElementById("tipText").innerText = cfg.tip;
+            document.getElementById("msgBox").innerText = `已找到：0/${cfg.rareCount}`;
+            document.getElementById("msgBox").style.color = "#fff";
+            totalRare = cfg.rareCount;
+            const canvas = document.getElementById("patternCanvas");
+            canvas.width = canvasFixedSize;
+            canvas.height = canvasFixedSize;
+            canvasCtx = canvas.getContext("2d");
+            const gridCellNum = cfg.grid;
+            const cellSize = canvasFixedSize / gridCellNum;
+            baseHue = Math.floor(Math.random() * 140) + 60;
+            const usedPos = new Set();
+            // 随机生成稀有图案坐标
+            while(rareTargets.length < totalRare) {
+                const rx = Math.floor(Math.random() * gridCellNum);
+                const ry = Math.floor(Math.random() * gridCellNum);
+                const key = `${rx}-${ry}`;
+                if(!usedPos.has(key)) {
+                    usedPos.add(key);
+                    rareTargets.push({
+                        x: rx * cellSize + cellSize/2,
+                        y: ry * cellSize + cellSize/2,
+                        cellX: rx,
+                        cellY: ry
+                    });
+                }
+            }
+            // 绘制全部格子与图案
+            for(let x=0;x<gridCellNum;x++){
+                for(let y=0;y<gridCellNum;y++){
+                    const cx = x * cellSize + cellSize/2;
+                    const cy = y * cellSize + cellSize/2;
+                    const isRare = usedPos.has(`${x}-${y}`);
+                    const bgHue = baseHue + (Math.random()-0.5)*4;
+                    canvasCtx.fillStyle = hslToHex(bgHue, 22, 16);
+                    canvasCtx.fillRect(x*cellSize, y*cellSize, cellSize, cellSize);
+                    drawPlant(canvasCtx, cx, cy, cfg.patternSize, cfg.basePattern, isRare, baseHue);
+                }
+            }
+            // 修复画布坐标换算逻辑
+            canvas.onclick = function(e) {
+                if(state !== "playing" || clickLock) return;
+                const rect = canvas.getBoundingClientRect();
+                // 标准正确坐标映射
+                const canvasClickX = (e.clientX - rect.left) * canvas.width / rect.width;
+                const canvasClickY = (e.clientY - rect.top) * canvas.height / rect.height;
+                let hitTarget = null;
+                // 检测是否命中稀有图案
+                for(let t of rareTargets) {
+                    const dist = Math.hypot(canvasClickX - t.x, canvasClickY - t.y);
+                    if(dist < cellSize / 2) {
+                        hitTarget = t;
+                        break;
+                    }
+                }
+                handlePatternClick(hitTarget, e.clientX - rect.left, e.clientY - rect.top);
+            }
+            startTimer(cfg.timeLimit);
+        }
+
+        // 辨色方块点击
+        function handleColorClick(idx) {
+            if(state !== "playing" || clickLock) return;
+            clickLock = true;
+            stopTimer();
+            const allCells = document.querySelectorAll(".color-cell");
+            const msgDom = document.getElementById("msgBox");
+            if(idx === targetIndex) {
+                allCells[targetIndex].classList.add("correct");
+                msgDom.innerText = "✅ 找对了！自动进入下一关";
+                msgDom.style.color = "#4f4";
+                totalScore += 1;
+                updateScoreUI();
+                setTimeout(autoNext, 1200);
+            } else {
+                allCells[idx].classList.add("wrong");
+                allCells[targetIndex].classList.add("correct");
+                msgDom.innerText = "❌ 答错，本局结束";
+                msgDom.style.color = "#f44";
+                setTimeout(gameOver, 1000);
+            }
+        }
+
+        // 图案画布点击逻辑
+        function handlePatternClick(hitTarget, clickScreenX, clickScreenY) {
+            if(state !== "playing" || clickLock) return;
+            const msgDom = document.getElementById("msgBox");
+            if(hitTarget) {
+                // 移除已找到的稀有，避免重复点击
+                rareTargets = rareTargets.filter(item => !(item.cellX === hitTarget.cellX && item.cellY === hitTarget.cellY));
+                foundCount++;
+                // 绘制绿色标记圈
+                const mark = document.createElement("div");
+                mark.className = "found-mark";
+                mark.style.left = (clickScreenX - 15) + "px";
+                mark.style.top = (clickScreenY - 15) + "px";
+                markContainer.appendChild(mark);
+                msgDom.innerText = `✅ 找到一个！进度：${foundCount}/${totalRare}`;
+                msgDom.style.color = "#4f4";
+                // 全部找齐自动跳关
+                if(foundCount >= totalRare) {
+                    state = "answered";
+                    clickLock = true;
+                    stopTimer();
+                    totalScore += 1;
+                    updateScoreUI();
+                    msgDom.innerText = "✅ 全部找齐！自动进入下一关";
+                    setTimeout(autoNext, 1200);
+                }
+            } else {
+                // 点空白区域直接失败
+                state = "answered";
+                clickLock = true;
+                stopTimer();
+                msgDom.innerText = `❌ 这里没有稀有图案，本局结束`;
+                msgDom.style.color = "#f44";
+                setTimeout(gameOver, 1000);
+            }
+        }
+
+        // 自动进入下一关
+        function autoNext() {
+            currentLv++;
+            if(currentLv >= LEVEL_CONFIG.length) {
+                showModal(`🏆 全部关卡通关！本局总分：${totalScore}<br><button onclick="restartGame()">重新开始</button>`);
+                return;
+            }
+            const cfg = LEVEL_CONFIG[currentLv];
+            if(cfg.type === 0){
+                createColorLevel(cfg);
+            }else{
+                createFindPatternLevel(cfg);
+            }
+        }
+
+        // 游戏失败结算（答错/超时统一调用）
+        function gameOver() {
+            stopTimer();
+            showModal(`💔 挑战失败<br>本局得分：${totalScore}<br><button onclick="restartGame()">重新开局</button>`);
+        }
+
+        // 重新开局，分数、关卡、计时全部重置
+        function restartGame() {
+            stopTimer();
+            totalScore = 0;
+            currentLv = 0;
+            updateScoreUI();
+            document.getElementById("modalTip").style.display = "none";
+            const cfg = LEVEL_CONFIG[0];
+            if(cfg.type === 0){
+                createColorLevel(cfg);
+            }else{
+                createFindPatternLevel(cfg);
+            }
+        }
+
+        // 更新分数显示
+        function updateScoreUI() {
+            document.getElementById("scoreTag").innerText = `得分：${totalScore}`;
+        }
+
+        window.onload = () => {
+            const cfg = LEVEL_CONFIG[0];
+            createColorLevel(cfg);
+        }
+    </script>
 </body>
 </html>
