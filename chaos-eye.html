@@ -13,12 +13,15 @@
   .guide { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.85); padding:12px 20px; border-radius:8px; font-size:14px; color:#7ef0ff; z-index:10; animation:fadeOut 3s forwards; pointer-events:none; }
   @keyframes fadeOut { 0%{opacity:1;} 70%{opacity:1;} 100%{opacity:0; display:none;} }
   .options { width:320px; margin:15px auto; overflow:hidden; }
-  .opt-canvas { width:90px; height:90px; background:#18183a; border:2px solid #444; float:left; margin:5px; }
-  .opt-canvas.correct { border-color:#4f4; background:#1a3a1a; }
-  .opt-canvas.wrong { border-color:#f44; background:#3a1a1a; }
+  .opt-canvas { width:90px; height:90px; background:#18183a; border:2px solid #444; float:left; margin:5px; transition:transform 0.1s; }
+  .opt-canvas:active { transform:scale(0.95); }
+  .opt-canvas.correct { border-color:#4f4; background:#1a3a1a; animation:correctFlash 0.3s; }
+  .opt-canvas.wrong { border-color:#f44; background:#3a1a1a; animation:wrongShake 0.3s; }
+  @keyframes correctFlash { 0%{box-shadow:0 0 0 rgba(79,255,79,0);} 50%{box-shadow:0 0 15px rgba(79,255,79,0.8);} 100%{box-shadow:0 0 0 rgba(79,255,79,0);} }
+  @keyframes wrongShake { 0%{transform:translateX(0);} 25%{transform:translateX(-5px);} 50%{transform:translateX(5px);} 75%{transform:translateX(-5px);} 100%{transform:translateX(0);} }
   button { padding:10px 30px; background:#7ef0ff22; color:#7ef0ff; border:1px solid #7ef0ff55; font-size:16px; margin-top:10px; }
   .level-tag { display:inline-block; padding:2px 8px; font-size:12px; margin-left:5px; border-radius:4px; }
-  .lv0 { background:#1a3a2a; color:#7fff7f; } /* 教学关专用浅绿色，友好 */
+  .lv0 { background:#1a3a2a; color:#7fff7f; }
   .lv1 { background:#1a3a1a; color:#4f4; }
   .lv2 { background:#3a3a1a; color:#ff4; }
   #msg { font-size:14px; color:#aaa; height:20px; margin-top:5px; }
@@ -27,14 +30,14 @@
 </head>
 <body>
 <h1>光影拼图：混沌之眼</h1>
-<div class="subtitle">记住闪烁的缺口特征 → 点选碎片</div>
+<div class="subtitle">颜色是辅助线索，形状才是核心哦～</div>
 <div class="info">
   关卡 <span id="levelNum">1</span>
   <span class="level-tag lv0" id="lvTag">Lv.0 新手教学</span>
 </div>
 <div style="position:relative; width:300px; margin:0 auto;">
   <canvas id="main" width="300" height="300"></canvas>
-  <div class="guide" id="guide">👀 记住闪烁的缺口特征哦！</div>
+  <div class="guide" id="guide">👀 记住闪烁的颜色+形状特征！</div>
 </div>
 <div class="options" id="opts"></div>
 <div id="msg"></div>
@@ -50,24 +53,35 @@ var state = "flash";
 var optsData = [];
 var guideShown = false;
 
-// 🎯 核心改造1：新增Lv.0教学关，优化缺口生成逻辑（带唯一特征，绝不雷同）
+// 🎯 核心调整1：预定义4种高辨识度特征+对应颜色（教学关用实色，后面逐渐变淡）
+var FEATURE_CONFIG = [
+  { type:0, name:"尖刺", color:"#ff4d4f", lightColor:"rgba(255,77,79,0.2)" }, // 红：尖刺
+  { type:1, name:"凹槽", color:"#1890ff", lightColor:"rgba(24,144,255,0.2)" }, // 蓝：凹槽
+  { type:2, name:"圆角", color:"#faad14", lightColor:"rgba(250,173,20,0.2)" }, // 黄：圆角
+  { type:3, name:"凸起", color:"#52c41a", lightColor:"rgba(82,196,26,0.2)" }  // 绿：凸起
+];
+
+// 🎯 核心调整2：难度梯度（颜色饱和度随关卡降低）
 var DIFFICULTY = [
   { 
-    name: 'Lv.0 新手教学', tagClass:'lv0', flash:2000, options:3, rotate:false, mirror:false,
-    desc: '无旋转/无镜像，缺口特征明显，先练练手～'
+    name:'Lv.0 新手教学', tagClass:'lv0', flash:2000, options:3, rotate:false, mirror:false,
+    colorSaturation:1, // 100%饱和度，颜色非常明显
+    desc:'无旋转/无镜像，颜色+形状双线索，先练手～'
   },
   { 
-    name: 'Lv.1 静止时光', tagClass:'lv1', flash:1500, options:4, rotate:false, mirror:false,
-    desc: '无旋转，缺口带细微特征，仔细看哦～'
+    name:'Lv.1 静止时光', tagClass:'lv1', flash:1500, options:4, rotate:false, mirror:false,
+    colorSaturation:0.5, // 50%饱和度，颜色变淡
+    desc:'无旋转，颜色变淡，主要靠形状哦～'
   },
   { 
-    name: 'Lv.2 流光溢彩', tagClass:'lv2', flash:1000, options:6, rotate:true, mirror:false,
-    desc: '碎片会旋转，注意特征朝向～'
+    name:'Lv.2 流光溢彩', tagClass:'lv2', flash:1000, options:6, rotate:true, mirror:false,
+    colorSaturation:0.1, // 10%饱和度，几乎无色差
+    desc:'碎片会旋转，颜色几乎消失，纯考形状！'
   }
 ];
 
-// 🎯 核心改造2：生成带唯一特征的缺口（不再是千篇一律的三角）
-function createFeaturePiece(sides, radius, gapIdx, level) {
+// 生成带特征和颜色的缺口
+function createFeaturePiece(sides, radius, gapIdx, level, featureType) {
   var pts = [];
   for (var i=0; i<sides; i++) {
     var a = (Math.PI*2*i/sides) - Math.PI/2;
@@ -76,53 +90,70 @@ function createFeaturePiece(sides, radius, gapIdx, level) {
   var p0 = pts[gapIdx];
   var p1 = pts[(gapIdx+1)%sides];
   var mid = {x:(p0.x+p1.x)/2, y:(p0.y+p1.y)/2};
+  var config = FEATURE_CONFIG[featureType];
   
-  // 给缺口加唯一特征（教学关特征特别明显）
-  var featureType = level === 0 ? Math.floor(Math.random()*4) : Math.floor(Math.random()*3);
-  var tip, featurePoint;
-  
+  // 根据特征类型生成形状
+  var piece = [];
   switch(featureType) {
-    case 0: // 带尖刺（顶端有个小凸起）
-      tip = {x:mid.x + (mid.x-CENTER.x)/radius*38, y:mid.y + (mid.y-CENTER.y)/radius*38};
-      featurePoint = {x:tip.x + (tip.x-mid.x)*0.3, y:tip.y + (tip.y-mid.y)*0.3};
+    case 0: // 尖刺（顶端明显凸起）
+      var tip = {x:mid.x + (mid.x-CENTER.x)/radius*42, y:mid.y + (mid.y-CENTER.y)/radius*42};
+      piece = [p0, tip, p1];
       break;
-    case 1: // 带凹槽（边缘有个小凹陷）
-      tip = {x:mid.x + (mid.x-CENTER.x)/radius*35, y:mid.y + (mid.y-CENTER.y)/radius*35};
-      var凹陷点 = {x:mid.x + (mid.x-CENTER.x)/radius*25, y:mid.y + (mid.y-CENTER.y)/radius*25};
-      featurePoint = 凹陷点;
+    case 1: // 凹槽（边缘明显凹陷）
+      var inner = {x:mid.x + (mid.x-CENTER.x)/radius*20, y:mid.y + (mid.y-CENTER.y)/radius*20};
+      piece = [p0, inner, p1];
       break;
-    case 2: // 带圆角（一角圆润）
-      tip = {x:mid.x + (mid.x-CENTER.x)/radius*32, y:mid.y + (mid.y-CENTER.y)/radius*32};
-      featurePoint = null; // 圆角用绘制时特殊处理
+    case 2: // 圆角（一角圆润）
+      var tip = {x:mid.x + (mid.x-CENTER.x)/radius*32, y:mid.y + (mid.y-CENTER.y)/radius*32};
+      piece = [p0, tip, p1];
       break;
-    case 3: // 带凸起（一侧有小鼓包，仅教学关有）
-      tip = {x:mid.x + (mid.x-CENTER.x)/radius*30, y:mid.y + (mid.y-CENTER.y)/radius*30};
-      var鼓包点 = {x:mid.x + (mid.x-CENTER.x)/radius*20, y:mid.y + (mid.y-CENTER.y)/radius*20};
-      featurePoint = 鼓包点;
+    case 3: // 凸起（一侧小鼓包）
+      var bump = {x:mid.x + (mid.x-CENTER.x)/radius*25, y:mid.y + (mid.y-CENTER.y)/radius*25};
+      piece = [p0, bump, p1];
       break;
   }
   
   return {
     outline: pts,
-    piece: [p0, ...(featurePoint?[featurePoint]:[]), tip, p1],
-    featureType: featureType, // 存下特征类型，用于生成干扰项
+    piece: piece,
+    featureType: featureType,
+    color: config.color,
+    lightColor: config.lightColor,
     isRoundCorner: featureType === 2
   };
 }
 
-// 绘制带特征的碎片
-function drawPiece(targetCtx, pieceData, cx, cy, scaleX, scaleY, rotDeg) {
+// 绘制带颜色的碎片
+function drawPiece(targetCtx, pieceData, cx, cy, scaleX, scaleY, rotDeg, isFlash, saturation) {
   targetCtx.save();
   targetCtx.translate(cx, cy);
   targetCtx.rotate(rotDeg * Math.PI/180);
   targetCtx.scale(scaleX, scaleY);
   targetCtx.translate(-cx, -cy);
   
+  // 应用颜色饱和度
+  var color = pieceData.lightColor;
+  if (saturation < 1) {
+    // 降低饱和度：转为灰度再混合
+    var r = parseInt(pieceData.lightColor.match(/\d+/g)[0]);
+    var g = parseInt(pieceData.lightColor.match(/\d+/g)[1]);
+    var b = parseInt(pieceData.lightColor.match(/\d+/g)[2]);
+    var gray = 0.299*r + 0.587*g + 0.114*b;
+    r = gray + (r - gray)*saturation;
+    g = gray + (g - gray)*saturation;
+    b = gray + (b - gray)*saturation;
+    color = `rgba(${r},${g},${b},${parseFloat(pieceData.lightColor.match(/[\d.]+$/)[0])})`;
+  }
+  
+  // 闪烁时用实色，平时用淡色
+  targetCtx.fillStyle = isFlash ? pieceData.color : color;
+  
   targetCtx.beginPath();
   var piece = pieceData.piece;
   targetCtx.moveTo(piece[0].x, piece[0].y);
+  
   for (var i=1; i<piece.length; i++) {
-    if (pieceData.isRoundCorner && i === Math.floor(piece.length/2)) {
+    if (pieceData.isRoundCorner && i === 1) {
       // 圆角处理
       var prev = piece[i-1], curr = piece[i];
       var cpX = (prev.x + curr.x)/2, cpY = (prev.y + curr.y)/2;
@@ -132,6 +163,7 @@ function drawPiece(targetCtx, pieceData, cx, cy, scaleX, scaleY, rotDeg) {
     }
   }
   targetCtx.closePath();
+  targetCtx.fill();
   targetCtx.restore();
 }
 
@@ -146,10 +178,12 @@ function generateLevel(lv) {
   ctx.clearRect(0,0,canvas.width,canvas.height);
   state = "flash";
   
-  // 教学关用简单四边形，后面用复杂多边形
+  // 教学关用4边形，后面逐渐增加复杂度
   var sides = lv === 0 ? 4 : 4 + Math.floor(Math.random()*2);
   var gapIdx = Math.floor(Math.random()*sides);
-  var puzzle = createFeaturePiece(sides, 70, gapIdx, lv);
+  // 教学关固定4种特征各来一遍，后面随机
+  var featureType = lv === 0 ? lv % 4 : Math.floor(Math.random()*4);
+  var puzzle = createFeaturePiece(sides, 70, gapIdx, lv, featureType);
   
   var answerRot = diff.rotate ? [0,90,180,270][Math.floor(Math.random()*4)] : 0;
   var answerMir = diff.mirror ? Math.random()>0.5 : false;
@@ -165,7 +199,7 @@ function generateLevel(lv) {
   ctx.stroke();
   ctx.setLineDash([]);
   
-  // 闪烁逻辑
+  // 闪烁逻辑（带颜色）
   var flashCount = 0;
   var flashMax = diff.flash / 250 * 2;
   var flashInt = setInterval(function(){
@@ -182,9 +216,8 @@ function generateLevel(lv) {
     ctx.setLineDash([]);
     
     if (flashCount % 2 === 0) {
-      ctx.fillStyle = "#ffd57ecc";
-      drawPiece(ctx, puzzle, CENTER.x, CENTER.y, 1, 1, 0);
-      ctx.fill();
+      // 闪烁时用实色，突出颜色线索
+      drawPiece(ctx, puzzle, CENTER.x, CENTER.y, 1, 1, 0, true, diff.colorSaturation);
     }
     flashCount++;
     if (flashCount > flashMax) {
@@ -204,7 +237,7 @@ function generateLevel(lv) {
     }
   }, 250);
   
-  // 显示引导（仅第一次进游戏）
+  // 显示引导
   if (!guideShown) {
     document.getElementById("guide").style.display = "block";
     setTimeout(function(){document.getElementById("guide").style.display = "none";}, 3000);
@@ -212,7 +245,7 @@ function generateLevel(lv) {
   }
 }
 
-// 构建选项（干扰项保留特征差异，避免雷同）
+// 构建选项
 function buildOptions(puzzle, diff, aRot, aMir, lv) {
   var optsEl = document.getElementById("opts");
   optsEl.innerHTML = "";
@@ -222,21 +255,21 @@ function buildOptions(puzzle, diff, aRot, aMir, lv) {
   // 正确答案
   optsData.push({piece:puzzle, rot:aRot, mir:aMir, isAnswer:true});
   
-  // 生成干扰项（教学关干扰项特征完全不同，后面逐渐接近）
+  // 生成干扰项（同颜色不同形状，或同形状不同颜色，避免纯靠颜色选）
   while (optsData.length < n) {
     var fakeRot = diff.rotate ? [0,90,180,270][Math.floor(Math.random()*4)] : 0;
     var fakeMir = diff.mirror ? Math.random()>0.5 : false;
-    // 干扰项用不同的特征类型（教学关）或相似但有差异的特征（后面关卡）
-    var fakeFeatureType = lv === 0 ? (optsData[0].piece.featureType + 1 + optsData.length) % 4 : optsData[0].piece.featureType;
+    // 干扰项：30%概率同特征不同颜色，70%概率同颜色不同特征
+    var fakeFeatureType = Math.random() < 0.3 ? puzzle.featureType : (puzzle.featureType + 1 + Math.floor(Math.random()*3)) % 4;
     var fakeSides = puzzle.outline.length;
     var fakeGapIdx = Math.floor(Math.random()*fakeSides);
-    var fakePuzzle = createFeaturePiece(fakeSides, 70, fakeGapIdx, lv);
-    fakePuzzle.featureType = fakeFeatureType; // 强制修改特征类型，保证差异
+    var fakePuzzle = createFeaturePiece(fakeSides, 70, fakeGapIdx, lv, fakeFeatureType);
     
-    // 轻微变形
+    // 轻微变形，增加区分度
     var fp = JSON.parse(JSON.stringify(fakePuzzle.piece));
-    fp[Math.floor(fp.length/2)].x += (Math.random()-0.5)*8;
-    fp[Math.floor(fp.length/2)].y += (Math.random()-0.5)*8;
+    var deformIdx = Math.floor(fp.length/2);
+    fp[deformIdx].x += (Math.random()-0.5)*10;
+    fp[deformIdx].y += (Math.random()-0.5)*10;
     
     optsData.splice(Math.floor(Math.random()*(optsData.length+1)), 0, {
       piece:{...fakePuzzle, piece:fp}, rot:fakeRot, mir:fakeMir, isAnswer:false
@@ -261,8 +294,8 @@ function buildOptions(puzzle, diff, aRot, aMir, lv) {
       y:cy + (p.y-CENTER.y)*scale
     }));
     
-    pc.fillStyle = "#e0e0e0";
-    drawPiece(pc, {...od.piece, piece:scaled}, cx, cy, od.mir?-scale:scale, scale, od.rot);
+    // 绘制碎片（用当前关卡的饱和度）
+    drawPiece(pc, {...od.piece, piece:scaled}, cx, cy, od.mir?-scale:scale, scale, od.rot, false, DIFFICULTY[Math.min(currentLevel, DIFFICULTY.length-1)].colorSaturation);
     pc.fill();
     
     c.onclick = function(){handleChoose(parseInt(this.getAttribute("data-index")));};
@@ -271,7 +304,7 @@ function buildOptions(puzzle, diff, aRot, aMir, lv) {
   }
 }
 
-// 选择处理+过关鼓励
+// 选择处理
 function handleChoose(idx) {
   if (state !== "choose") return;
   state = "done";
@@ -294,9 +327,8 @@ function handleChoose(idx) {
   if (optsData[idx].isAnswer) {
     msg.innerHTML = "✅ 正确！";
     msg.style.color = "#4f4";
-    // 教学关过了给鼓励
     if (currentLevel === 0) {
-      encourage.innerHTML = "🎉 眼力不错！<br>准备好迎接正式挑战了吗？";
+      encourage.innerHTML = "🎉 眼力不错！<br>接下来颜色会变淡，要靠形状哦～";
       encourage.style.display = "block";
       setTimeout(function(){encourage.style.display="none";}, 2000);
     }
