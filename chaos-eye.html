@@ -12,7 +12,7 @@
   canvas#main { width:300px; height:300px; background:#111128; border:1px solid #333; display:block; margin:0 auto; position:relative; }
   .guide { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.85); padding:12px 20px; border-radius:8px; font-size:14px; color:#7ef0ff; z-index:10; animation:fadeOut 3s forwards; pointer-events:none; }
   @keyframes fadeOut { 0%{opacity:1;} 70%{opacity:1;} 100%{opacity:0; display:none;} }
-  .options { width:320px; margin:15px auto; overflow:hidden; }
+  .options { width:320px; margin:15px auto; overflow:hidden; min-height:100px; } /* 加最小高度，避免加载时空晃 */
   .opt-canvas { width:90px; height:90px; background:#18183a; border:2px solid #444; float:left; margin:5px; transition:transform 0.1s; }
   .opt-canvas:active { transform:scale(0.95); }
   .opt-canvas.correct { border-color:#4f4; background:#1a3a1a; animation:correctFlash 0.3s; }
@@ -52,36 +52,23 @@ var currentLevel = 0;
 var state = "flash";
 var optsData = [];
 var guideShown = false;
+var flashTimer = null; // 👉 新增：存闪烁定时器的ID，用来清除旧定时器
 
-// 🎯 核心调整1：预定义4种高辨识度特征+对应颜色（教学关用实色，后面逐渐变淡）
 var FEATURE_CONFIG = [
-  { type:0, name:"尖刺", color:"#ff4d4f", lightColor:"rgba(255,77,79,0.2)" }, // 红：尖刺
-  { type:1, name:"凹槽", color:"#1890ff", lightColor:"rgba(24,144,255,0.2)" }, // 蓝：凹槽
-  { type:2, name:"圆角", color:"#faad14", lightColor:"rgba(250,173,20,0.2)" }, // 黄：圆角
-  { type:3, name:"凸起", color:"#52c41a", lightColor:"rgba(82,196,26,0.2)" }  // 绿：凸起
+  { type:0, name:"尖刺", color:"#ff4d4f", lightColor:"rgba(255,77,79,0.2)" },
+  { type:1, name:"凹槽", color:"#1890ff", lightColor:"rgba(24,144,255,0.2)" },
+  { type:2, name:"圆角", color:"#faad14", lightColor:"rgba(250,173,20,0.2)" },
+  { type:3, name:"凸起", color:"#52c41a", lightColor:"rgba(82,196,26,0.2)" }
 ];
 
-// 🎯 核心调整2：难度梯度（颜色饱和度随关卡降低）
 var DIFFICULTY = [
-  { 
-    name:'Lv.0 新手教学', tagClass:'lv0', flash:2000, options:3, rotate:false, mirror:false,
-    colorSaturation:1, // 100%饱和度，颜色非常明显
-    desc:'无旋转/无镜像，颜色+形状双线索，先练手～'
-  },
-  { 
-    name:'Lv.1 静止时光', tagClass:'lv1', flash:1500, options:4, rotate:false, mirror:false,
-    colorSaturation:0.5, // 50%饱和度，颜色变淡
-    desc:'无旋转，颜色变淡，主要靠形状哦～'
-  },
-  { 
-    name:'Lv.2 流光溢彩', tagClass:'lv2', flash:1000, options:6, rotate:true, mirror:false,
-    colorSaturation:0.1, // 10%饱和度，几乎无色差
-    desc:'碎片会旋转，颜色几乎消失，纯考形状！'
-  }
+  { name:'Lv.0 新手教学', tagClass:'lv0', flash:2000, options:3, rotate:false, mirror:false, colorSaturation:1, desc:'无旋转/无镜像，颜色+形状双线索，先练手～' },
+  { name:'Lv.1 静止时光', tagClass:'lv1', flash:1500, options:4, rotate:false, mirror:false, colorSaturation:0.5, desc:'无旋转，颜色变淡，主要靠形状哦～' },
+  { name:'Lv.2 流光溢彩', tagClass:'lv2', flash:1000, options:6, rotate:true, mirror:false, colorSaturation:0.1, desc:'碎片会旋转，颜色几乎消失，纯考形状！' }
 ];
 
 // 生成带特征和颜色的缺口
-function createFeaturePiece(sides, radius, gapIdx, level, featureType) {
+function createFeaturePiece(sides, radius, gapIdx, featureType) {
   var pts = [];
   for (var i=0; i<sides; i++) {
     var a = (Math.PI*2*i/sides) - Math.PI/2;
@@ -91,39 +78,34 @@ function createFeaturePiece(sides, radius, gapIdx, level, featureType) {
   var p1 = pts[(gapIdx+1)%sides];
   var mid = {x:(p0.x+p1.x)/2, y:(p0.y+p1.y)/2};
   var config = FEATURE_CONFIG[featureType];
-  
-  // 根据特征类型生成形状
   var piece = [];
+  
   switch(featureType) {
-    case 0: // 尖刺（顶端明显凸起）
+    case 0: // 尖刺
       var tip = {x:mid.x + (mid.x-CENTER.x)/radius*42, y:mid.y + (mid.y-CENTER.y)/radius*42};
       piece = [p0, tip, p1];
       break;
-    case 1: // 凹槽（边缘明显凹陷）
+    case 1: // 凹槽
       var inner = {x:mid.x + (mid.x-CENTER.x)/radius*20, y:mid.y + (mid.y-CENTER.y)/radius*20};
       piece = [p0, inner, p1];
       break;
-    case 2: // 圆角（一角圆润）
+    case 2: // 圆角
       var tip = {x:mid.x + (mid.x-CENTER.x)/radius*32, y:mid.y + (mid.y-CENTER.y)/radius*32};
       piece = [p0, tip, p1];
       break;
-    case 3: // 凸起（一侧小鼓包）
+    case 3: // 凸起
       var bump = {x:mid.x + (mid.x-CENTER.x)/radius*25, y:mid.y + (mid.y-CENTER.y)/radius*25};
       piece = [p0, bump, p1];
       break;
   }
   
   return {
-    outline: pts,
-    piece: piece,
-    featureType: featureType,
-    color: config.color,
-    lightColor: config.lightColor,
-    isRoundCorner: featureType === 2
+    outline: pts, piece: piece, featureType: featureType,
+    color: config.color, lightColor: config.lightColor, isRoundCorner: featureType === 2
   };
 }
 
-// 绘制带颜色的碎片
+// 绘制带颜色的碎片（修复了圆角参数错误！）
 function drawPiece(targetCtx, pieceData, cx, cy, scaleX, scaleY, rotDeg, isFlash, saturation) {
   targetCtx.save();
   targetCtx.translate(cx, cy);
@@ -131,21 +113,19 @@ function drawPiece(targetCtx, pieceData, cx, cy, scaleX, scaleY, rotDeg, isFlash
   targetCtx.scale(scaleX, scaleY);
   targetCtx.translate(-cx, -cy);
   
-  // 应用颜色饱和度
+  // 颜色饱和度处理
   var color = pieceData.lightColor;
   if (saturation < 1) {
-    // 降低饱和度：转为灰度再混合
     var r = parseInt(pieceData.lightColor.match(/\d+/g)[0]);
     var g = parseInt(pieceData.lightColor.match(/\d+/g)[1]);
     var b = parseInt(pieceData.lightColor.match(/\d+/g)[2]);
+    var a = parseFloat(pieceData.lightColor.match(/[\d.]+$/)[0]);
     var gray = 0.299*r + 0.587*g + 0.114*b;
     r = gray + (r - gray)*saturation;
     g = gray + (g - gray)*saturation;
     b = gray + (b - gray)*saturation;
-    color = `rgba(${r},${g},${b},${parseFloat(pieceData.lightColor.match(/[\d.]+$/)[0])})`;
+    color = `rgba(${r},${g},${b},${a})`;
   }
-  
-  // 闪烁时用实色，平时用淡色
   targetCtx.fillStyle = isFlash ? pieceData.color : color;
   
   targetCtx.beginPath();
@@ -154,10 +134,12 @@ function drawPiece(targetCtx, pieceData, cx, cy, scaleX, scaleY, rotDeg, isFlash
   
   for (var i=1; i<piece.length; i++) {
     if (pieceData.isRoundCorner && i === 1) {
-      // 圆角处理
-      var prev = piece[i-1], curr = piece[i];
-      var cpX = (prev.x + curr.x)/2, cpY = (prev.y + curr.y)/2;
-      targetCtx.quadraticCurveTo(prev.x, prev.y, cpX, cpY);
+      // 👉 修复：圆角贝塞尔曲线参数写反的问题
+      var prev = piece[i-1];
+      var curr = piece[i];
+      var cpX = (prev.x + curr.x) / 2;
+      var cpY = (prev.y + curr.y) / 2;
+      targetCtx.quadraticCurveTo(cpX, cpY, curr.x, curr.y); // 正确参数：控制点→终点
     } else {
       targetCtx.lineTo(piece[i].x, piece[i].y);
     }
@@ -167,8 +149,13 @@ function drawPiece(targetCtx, pieceData, cx, cy, scaleX, scaleY, rotDeg, isFlash
   targetCtx.restore();
 }
 
-// 生成关卡
+// 👉 核心修复1：生成关卡时先清掉旧定时器和旧选项
 function generateLevel(lv) {
+  // 清除上一个关卡的闪烁定时器，避免残留
+  if (flashTimer) { clearInterval(flashTimer); flashTimer = null; }
+  // 立即清空选项区，避免旧内容残留
+  document.getElementById("opts").innerHTML = "";
+  
   var diff = DIFFICULTY[Math.min(lv, DIFFICULTY.length-1)];
   document.getElementById("levelNum").innerHTML = lv+1;
   document.getElementById("lvTag").innerHTML = diff.name;
@@ -178,12 +165,10 @@ function generateLevel(lv) {
   ctx.clearRect(0,0,canvas.width,canvas.height);
   state = "flash";
   
-  // 教学关用4边形，后面逐渐增加复杂度
   var sides = lv === 0 ? 4 : 4 + Math.floor(Math.random()*2);
   var gapIdx = Math.floor(Math.random()*sides);
-  // 教学关固定4种特征各来一遍，后面随机
   var featureType = lv === 0 ? lv % 4 : Math.floor(Math.random()*4);
-  var puzzle = createFeaturePiece(sides, 70, gapIdx, lv, featureType);
+  var puzzle = createFeaturePiece(sides, 70, gapIdx, featureType);
   
   var answerRot = diff.rotate ? [0,90,180,270][Math.floor(Math.random()*4)] : 0;
   var answerMir = diff.mirror ? Math.random()>0.5 : false;
@@ -199,10 +184,10 @@ function generateLevel(lv) {
   ctx.stroke();
   ctx.setLineDash([]);
   
-  // 闪烁逻辑（带颜色）
+  // 闪烁逻辑
   var flashCount = 0;
   var flashMax = diff.flash / 250 * 2;
-  var flashInt = setInterval(function(){
+  flashTimer = setInterval(function(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     // 重画轮廓
     ctx.setLineDash([6,4]);
@@ -216,12 +201,12 @@ function generateLevel(lv) {
     ctx.setLineDash([]);
     
     if (flashCount % 2 === 0) {
-      // 闪烁时用实色，突出颜色线索
       drawPiece(ctx, puzzle, CENTER.x, CENTER.y, 1, 1, 0, true, diff.colorSaturation);
     }
     flashCount++;
     if (flashCount > flashMax) {
-      clearInterval(flashInt);
+      clearInterval(flashTimer);
+      flashTimer = null;
       ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.setLineDash([6,4]);
       ctx.strokeStyle = "#7ef0ff88";
@@ -245,27 +230,26 @@ function generateLevel(lv) {
   }
 }
 
-// 构建选项
+// 构建选项（确保生成正确数量的选项）
 function buildOptions(puzzle, diff, aRot, aMir, lv) {
   var optsEl = document.getElementById("opts");
-  optsEl.innerHTML = "";
+  optsEl.innerHTML = ""; // 再次清空，双重保险
   optsData = [];
   var n = diff.options;
   
   // 正确答案
   optsData.push({piece:puzzle, rot:aRot, mir:aMir, isAnswer:true});
   
-  // 生成干扰项（同颜色不同形状，或同形状不同颜色，避免纯靠颜色选）
+  // 生成干扰项
   while (optsData.length < n) {
     var fakeRot = diff.rotate ? [0,90,180,270][Math.floor(Math.random()*4)] : 0;
     var fakeMir = diff.mirror ? Math.random()>0.5 : false;
-    // 干扰项：30%概率同特征不同颜色，70%概率同颜色不同特征
     var fakeFeatureType = Math.random() < 0.3 ? puzzle.featureType : (puzzle.featureType + 1 + Math.floor(Math.random()*3)) % 4;
     var fakeSides = puzzle.outline.length;
     var fakeGapIdx = Math.floor(Math.random()*fakeSides);
-    var fakePuzzle = createFeaturePiece(fakeSides, 70, fakeGapIdx, lv, fakeFeatureType);
+    var fakePuzzle = createFeaturePiece(fakeSides, 70, fakeGapIdx, fakeFeatureType);
     
-    // 轻微变形，增加区分度
+    // 轻微变形
     var fp = JSON.parse(JSON.stringify(fakePuzzle.piece));
     var deformIdx = Math.floor(fp.length/2);
     fp[deformIdx].x += (Math.random()-0.5)*10;
@@ -276,7 +260,7 @@ function buildOptions(puzzle, diff, aRot, aMir, lv) {
     });
   }
   
-  // 渲染选项
+  // 渲染选项（现在肯定能画出内容了）
   for (var i=0; i<optsData.length; i++) {
     var od = optsData[i];
     var c = document.createElement("canvas");
@@ -294,9 +278,7 @@ function buildOptions(puzzle, diff, aRot, aMir, lv) {
       y:cy + (p.y-CENTER.y)*scale
     }));
     
-    // 绘制碎片（用当前关卡的饱和度）
     drawPiece(pc, {...od.piece, piece:scaled}, cx, cy, od.mir?-scale:scale, scale, od.rot, false, DIFFICULTY[Math.min(currentLevel, DIFFICULTY.length-1)].colorSaturation);
-    pc.fill();
     
     c.onclick = function(){handleChoose(parseInt(this.getAttribute("data-index")));};
     c.ontouchstart = function(e){e.preventDefault(); handleChoose(parseInt(this.getAttribute("data-index")));};
@@ -304,7 +286,6 @@ function buildOptions(puzzle, diff, aRot, aMir, lv) {
   }
 }
 
-// 选择处理
 function handleChoose(idx) {
   if (state !== "choose") return;
   state = "done";
@@ -338,7 +319,9 @@ function handleChoose(idx) {
   }
 }
 
+// 👉 核心修复2：点下一关时，如果还在闪烁，直接终止当前动画，立即进下一关
 function nextLevel() {
+  if (flashTimer) { clearInterval(flashTimer); flashTimer = null; }
   document.getElementById("msg").innerHTML = "";
   currentLevel++;
   generateLevel(currentLevel);
