@@ -2,127 +2,134 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<!-- 强制全屏，禁止缩放，这是兼容性的基石 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>光影拼图：混沌之眼</title>
 <style type="text/css">
-  body {
-    margin: 0;
-    padding: 0;
-    background: #0a0a1a;
-    color: #e0e0e0;
-    font-family: Arial, Helvetica, sans-serif; /* 只用最基础的字体 */
-    text-align: center;
-    -webkit-user-select: none; /* 禁止选中文字，防误触 */
-    user-select: none;
-  }
-  h1 {
-    font-size: 18px;
-    color: #7ef0ff;
-    margin: 10px 0 5px 0;
-  }
-  .subtitle { font-size: 12px; color: #888; }
-  .info { font-size: 14px; margin: 8px 0; }
-  /* 固定大小，不用自适应比例，老手机最爱 */
-  canvas#main {
-    width: 300px;
-    height: 300px;
-    background: #111128;
-    border: 1px solid #333;
-    display: block;
-    margin: 0 auto;
-  }
-  .options {
-    width: 320px;
-    margin: 15px auto;
-    overflow: hidden; /* 清除浮动 */
-  }
-  .opt-canvas {
-    width: 90px;
-    height: 90px;
-    background: #18183a;
-    border: 2px solid #444;
-    float: left; /* 用 float 代替 flex，兼容性无敌 */
-    margin: 5px;
-  }
-  .opt-canvas.correct { border-color: #4f4; background: #1a3a1a; }
-  .opt-canvas.wrong { border-color: #f44; background: #3a1a1a; }
-  button {
-    padding: 10px 30px;
-    background: #7ef0ff22;
-    color: #7ef0ff;
-    border: 1px solid #7ef0ff55;
-    font-size: 16px;
-    margin-top: 10px;
-  }
-  .level-tag {
-    display: inline-block;
-    padding: 2px 8px;
-    font-size: 12px;
-    margin-left: 5px;
-  }
-  .lv1 { background: #1a3a1a; color: #4f4; }
-  .lv2 { background: #3a3a1a; color: #ff4; }
-  #msg { font-size: 14px; color: #aaa; height: 20px; margin-top: 5px; }
+  body { margin:0; padding:0; background:#0a0a1a; color:#e0e0e0; font-family:Arial,Helvetica,sans-serif; text-align:center; -webkit-user-select:none; user-select:none; }
+  h1 { font-size:18px; color:#7ef0ff; margin:10px 0 5px 0; }
+  .subtitle { font-size:12px; color:#888; }
+  .info { font-size:14px; margin:8px 0; }
+  canvas#main { width:300px; height:300px; background:#111128; border:1px solid #333; display:block; margin:0 auto; position:relative; }
+  .guide { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.85); padding:12px 20px; border-radius:8px; font-size:14px; color:#7ef0ff; z-index:10; animation:fadeOut 3s forwards; pointer-events:none; }
+  @keyframes fadeOut { 0%{opacity:1;} 70%{opacity:1;} 100%{opacity:0; display:none;} }
+  .options { width:320px; margin:15px auto; overflow:hidden; }
+  .opt-canvas { width:90px; height:90px; background:#18183a; border:2px solid #444; float:left; margin:5px; }
+  .opt-canvas.correct { border-color:#4f4; background:#1a3a1a; }
+  .opt-canvas.wrong { border-color:#f44; background:#3a1a1a; }
+  button { padding:10px 30px; background:#7ef0ff22; color:#7ef0ff; border:1px solid #7ef0ff55; font-size:16px; margin-top:10px; }
+  .level-tag { display:inline-block; padding:2px 8px; font-size:12px; margin-left:5px; border-radius:4px; }
+  .lv0 { background:#1a3a2a; color:#7fff7f; } /* 教学关专用浅绿色，友好 */
+  .lv1 { background:#1a3a1a; color:#4f4; }
+  .lv2 { background:#3a3a1a; color:#ff4; }
+  #msg { font-size:14px; color:#aaa; height:20px; margin-top:5px; }
+  .encourage { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.9); padding:20px; border-radius:10px; font-size:16px; color:#7ef0ff; z-index:20; display:none; }
 </style>
 </head>
 <body>
-
 <h1>光影拼图：混沌之眼</h1>
-<div class="subtitle">记住闪烁的缺口 → 点选碎片</div>
+<div class="subtitle">记住闪烁的缺口特征 → 点选碎片</div>
 <div class="info">
   关卡 <span id="levelNum">1</span>
-  <span class="level-tag lv1" id="lvTag">Lv.1</span>
+  <span class="level-tag lv0" id="lvTag">Lv.0 新手教学</span>
 </div>
-<canvas id="main" width="300" height="300"></canvas>
+<div style="position:relative; width:300px; margin:0 auto;">
+  <canvas id="main" width="300" height="300"></canvas>
+  <div class="guide" id="guide">👀 记住闪烁的缺口特征哦！</div>
+</div>
 <div class="options" id="opts"></div>
 <div id="msg"></div>
 <button onclick="nextLevel()">下一关</button>
+<div class="encourage" id="encourage"></div>
 
 <script type="text/javascript">
-// 全局变量
 var canvas = document.getElementById("main");
 var ctx = canvas.getContext("2d");
-var CENTER = { x: 150, y: 130 };
+var CENTER = {x:150, y:130};
 var currentLevel = 0;
 var state = "flash";
 var optsData = [];
+var guideShown = false;
 
-// 难度配置
+// 🎯 核心改造1：新增Lv.0教学关，优化缺口生成逻辑（带唯一特征，绝不雷同）
 var DIFFICULTY = [
-  { name: 'Lv.1 静止时光', tagClass:'lv1', flash:1500, options:4, rotate:false, mirror:false },
-  { name: 'Lv.2 流光溢彩', tagClass:'lv2', flash:1000, options:6, rotate:true,  mirror:false }
+  { 
+    name: 'Lv.0 新手教学', tagClass:'lv0', flash:2000, options:3, rotate:false, mirror:false,
+    desc: '无旋转/无镜像，缺口特征明显，先练练手～'
+  },
+  { 
+    name: 'Lv.1 静止时光', tagClass:'lv1', flash:1500, options:4, rotate:false, mirror:false,
+    desc: '无旋转，缺口带细微特征，仔细看哦～'
+  },
+  { 
+    name: 'Lv.2 流光溢彩', tagClass:'lv2', flash:1000, options:6, rotate:true, mirror:false,
+    desc: '碎片会旋转，注意特征朝向～'
+  }
 ];
 
-// 创建拼图（传统函数写法）
-function createPuzzle(sides, radius, gapIdx) {
+// 🎯 核心改造2：生成带唯一特征的缺口（不再是千篇一律的三角）
+function createFeaturePiece(sides, radius, gapIdx, level) {
   var pts = [];
-  for (var i = 0; i < sides; i++) {
-    var a = (Math.PI * 2 * i / sides) - Math.PI / 2;
-    pts.push({ x: CENTER.x + radius * Math.cos(a), y: CENTER.y + radius * Math.sin(a) });
+  for (var i=0; i<sides; i++) {
+    var a = (Math.PI*2*i/sides) - Math.PI/2;
+    pts.push({x:CENTER.x + radius*Math.cos(a), y:CENTER.y + radius*Math.sin(a)});
   }
   var p0 = pts[gapIdx];
-  var p1 = pts[(gapIdx + 1) % sides];
-  var mx = (p0.x + p1.x) / 2;
-  var my = (p0.y + p1.y) / 2;
-  var tip = {
-    x: mx + (mx - CENTER.x) / radius * 35,
-    y: my + (my - CENTER.y) / radius * 35
+  var p1 = pts[(gapIdx+1)%sides];
+  var mid = {x:(p0.x+p1.x)/2, y:(p0.y+p1.y)/2};
+  
+  // 给缺口加唯一特征（教学关特征特别明显）
+  var featureType = level === 0 ? Math.floor(Math.random()*4) : Math.floor(Math.random()*3);
+  var tip, featurePoint;
+  
+  switch(featureType) {
+    case 0: // 带尖刺（顶端有个小凸起）
+      tip = {x:mid.x + (mid.x-CENTER.x)/radius*38, y:mid.y + (mid.y-CENTER.y)/radius*38};
+      featurePoint = {x:tip.x + (tip.x-mid.x)*0.3, y:tip.y + (tip.y-mid.y)*0.3};
+      break;
+    case 1: // 带凹槽（边缘有个小凹陷）
+      tip = {x:mid.x + (mid.x-CENTER.x)/radius*35, y:mid.y + (mid.y-CENTER.y)/radius*35};
+      var凹陷点 = {x:mid.x + (mid.x-CENTER.x)/radius*25, y:mid.y + (mid.y-CENTER.y)/radius*25};
+      featurePoint = 凹陷点;
+      break;
+    case 2: // 带圆角（一角圆润）
+      tip = {x:mid.x + (mid.x-CENTER.x)/radius*32, y:mid.y + (mid.y-CENTER.y)/radius*32};
+      featurePoint = null; // 圆角用绘制时特殊处理
+      break;
+    case 3: // 带凸起（一侧有小鼓包，仅教学关有）
+      tip = {x:mid.x + (mid.x-CENTER.x)/radius*30, y:mid.y + (mid.y-CENTER.y)/radius*30};
+      var鼓包点 = {x:mid.x + (mid.x-CENTER.x)/radius*20, y:mid.y + (mid.y-CENTER.y)/radius*20};
+      featurePoint = 鼓包点;
+      break;
+  }
+  
+  return {
+    outline: pts,
+    piece: [p0, ...(featurePoint?[featurePoint]:[]), tip, p1],
+    featureType: featureType, // 存下特征类型，用于生成干扰项
+    isRoundCorner: featureType === 2
   };
-  return { outline: pts, piece: [p0, tip, p1] };
 }
 
-// 绘制碎片
-function drawPiece(targetCtx, piecePts, cx, cy, scaleX, scaleY, rotDeg) {
+// 绘制带特征的碎片
+function drawPiece(targetCtx, pieceData, cx, cy, scaleX, scaleY, rotDeg) {
   targetCtx.save();
   targetCtx.translate(cx, cy);
-  targetCtx.rotate(rotDeg * Math.PI / 180);
+  targetCtx.rotate(rotDeg * Math.PI/180);
   targetCtx.scale(scaleX, scaleY);
   targetCtx.translate(-cx, -cy);
+  
   targetCtx.beginPath();
-  targetCtx.moveTo(piecePts[0].x, piecePts[0].y);
-  for (var i = 1; i < piecePts.length; i++) {
-    targetCtx.lineTo(piecePts[i].x, piecePts[i].y);
+  var piece = pieceData.piece;
+  targetCtx.moveTo(piece[0].x, piece[0].y);
+  for (var i=1; i<piece.length; i++) {
+    if (pieceData.isRoundCorner && i === Math.floor(piece.length/2)) {
+      // 圆角处理
+      var prev = piece[i-1], curr = piece[i];
+      var cpX = (prev.x + curr.x)/2, cpY = (prev.y + curr.y)/2;
+      targetCtx.quadraticCurveTo(prev.x, prev.y, cpX, cpY);
+    } else {
+      targetCtx.lineTo(piece[i].x, piece[i].y);
+    }
   }
   targetCtx.closePath();
   targetCtx.restore();
@@ -130,139 +137,149 @@ function drawPiece(targetCtx, piecePts, cx, cy, scaleX, scaleY, rotDeg) {
 
 // 生成关卡
 function generateLevel(lv) {
-  var diff = DIFFICULTY[Math.min(lv, DIFFICULTY.length - 1)];
-  document.getElementById("levelNum").innerHTML = lv + 1;
+  var diff = DIFFICULTY[Math.min(lv, DIFFICULTY.length-1)];
+  document.getElementById("levelNum").innerHTML = lv+1;
   document.getElementById("lvTag").innerHTML = diff.name;
   document.getElementById("lvTag").className = "level-tag " + diff.tagClass;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById("msg").innerHTML = diff.desc;
+  
+  ctx.clearRect(0,0,canvas.width,canvas.height);
   state = "flash";
-
-  var sides = 4 + Math.floor(Math.random() * 3);
-  var gapIdx = Math.floor(Math.random() * sides);
-  var puzzle = createPuzzle(sides, 70, gapIdx);
-
+  
+  // 教学关用简单四边形，后面用复杂多边形
+  var sides = lv === 0 ? 4 : 4 + Math.floor(Math.random()*2);
+  var gapIdx = Math.floor(Math.random()*sides);
+  var puzzle = createFeaturePiece(sides, 70, gapIdx, lv);
+  
   var answerRot = diff.rotate ? [0,90,180,270][Math.floor(Math.random()*4)] : 0;
-  var answerMir = diff.mirror ? Math.random() > 0.5 : false;
-
+  var answerMir = diff.mirror ? Math.random()>0.5 : false;
+  
   // 画轮廓
-  ctx.setLineDash([6, 4]);
+  ctx.setLineDash([6,4]);
   ctx.strokeStyle = "#7ef0ff88";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(puzzle.outline[0].x, puzzle.outline[0].y);
-  for (var i = 1; i < puzzle.outline.length; i++) {
-    ctx.lineTo(puzzle.outline[i].x, puzzle.outline[i].y);
-  }
+  for (var i=1; i<puzzle.outline.length; i++) ctx.lineTo(puzzle.outline[i].x, puzzle.outline[i].y);
   ctx.closePath();
   ctx.stroke();
   ctx.setLineDash([]);
-
+  
   // 闪烁逻辑
   var flashCount = 0;
-  var flashMax = diff.flash / 250 * 2; // 计算闪烁次数
-  var flashInt = setInterval(function() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  var flashMax = diff.flash / 250 * 2;
+  var flashInt = setInterval(function(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     // 重画轮廓
-    ctx.setLineDash([6, 4]);
+    ctx.setLineDash([6,4]);
     ctx.strokeStyle = "#7ef0ff88";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(puzzle.outline[0].x, puzzle.outline[0].y);
-    for (var i = 1; i < puzzle.outline.length; i++) {
-      ctx.lineTo(puzzle.outline[i].x, puzzle.outline[i].y);
-    }
+    for (var i=1; i<puzzle.outline.length; i++) ctx.lineTo(puzzle.outline[i].x, puzzle.outline[i].y);
     ctx.closePath();
     ctx.stroke();
     ctx.setLineDash([]);
-
-    if (flashCount % 2 == 0) {
+    
+    if (flashCount % 2 === 0) {
       ctx.fillStyle = "#ffd57ecc";
-      drawPiece(ctx, puzzle.piece, CENTER.x, CENTER.y, 1, 1, 0);
+      drawPiece(ctx, puzzle, CENTER.x, CENTER.y, 1, 1, 0);
       ctx.fill();
     }
     flashCount++;
     if (flashCount > flashMax) {
       clearInterval(flashInt);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.setLineDash([6, 4]);
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.setLineDash([6,4]);
       ctx.strokeStyle = "#7ef0ff88";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(puzzle.outline[0].x, puzzle.outline[0].y);
-      for (var i = 1; i < puzzle.outline.length; i++) {
-        ctx.lineTo(puzzle.outline[i].x, puzzle.outline[i].y);
-      }
+      for (var i=1; i<puzzle.outline.length; i++) ctx.lineTo(puzzle.outline[i].x, puzzle.outline[i].y);
       ctx.closePath();
       ctx.stroke();
       ctx.setLineDash([]);
       state = "choose";
-      buildOptions(puzzle, diff, answerRot, answerMir);
+      buildOptions(puzzle, diff, answerRot, answerMir, lv);
     }
   }, 250);
+  
+  // 显示引导（仅第一次进游戏）
+  if (!guideShown) {
+    document.getElementById("guide").style.display = "block";
+    setTimeout(function(){document.getElementById("guide").style.display = "none";}, 3000);
+    guideShown = true;
+  }
 }
 
-// 构建选项
-function buildOptions(puzzle, diff, aRot, aMir) {
+// 构建选项（干扰项保留特征差异，避免雷同）
+function buildOptions(puzzle, diff, aRot, aMir, lv) {
   var optsEl = document.getElementById("opts");
   optsEl.innerHTML = "";
   optsData = [];
   var n = diff.options;
   
-  optsData.push({ piece: puzzle.piece, rot: aRot, mir: aMir, isAnswer: true });
+  // 正确答案
+  optsData.push({piece:puzzle, rot:aRot, mir:aMir, isAnswer:true});
+  
+  // 生成干扰项（教学关干扰项特征完全不同，后面逐渐接近）
   while (optsData.length < n) {
     var fakeRot = diff.rotate ? [0,90,180,270][Math.floor(Math.random()*4)] : 0;
-    var fakeMir = diff.mirror ? Math.random() > 0.5 : false;
-    var fp = JSON.parse(JSON.stringify(puzzle.piece));
-    fp[1].x += (Math.random() - 0.5) * 10;
-    fp[1].y += (Math.random() - 0.5) * 10;
-    var insertPos = Math.floor(Math.random() * (optsData.length + 1));
-    optsData.splice(insertPos, 0, { piece: fp, rot: fakeRot, mir: fakeMir, isAnswer: false });
+    var fakeMir = diff.mirror ? Math.random()>0.5 : false;
+    // 干扰项用不同的特征类型（教学关）或相似但有差异的特征（后面关卡）
+    var fakeFeatureType = lv === 0 ? (optsData[0].piece.featureType + 1 + optsData.length) % 4 : optsData[0].piece.featureType;
+    var fakeSides = puzzle.outline.length;
+    var fakeGapIdx = Math.floor(Math.random()*fakeSides);
+    var fakePuzzle = createFeaturePiece(fakeSides, 70, fakeGapIdx, lv);
+    fakePuzzle.featureType = fakeFeatureType; // 强制修改特征类型，保证差异
+    
+    // 轻微变形
+    var fp = JSON.parse(JSON.stringify(fakePuzzle.piece));
+    fp[Math.floor(fp.length/2)].x += (Math.random()-0.5)*8;
+    fp[Math.floor(fp.length/2)].y += (Math.random()-0.5)*8;
+    
+    optsData.splice(Math.floor(Math.random()*(optsData.length+1)), 0, {
+      piece:{...fakePuzzle, piece:fp}, rot:fakeRot, mir:fakeMir, isAnswer:false
+    });
   }
-
-  for (var i = 0; i < optsData.length; i++) {
+  
+  // 渲染选项
+  for (var i=0; i<optsData.length; i++) {
     var od = optsData[i];
     var c = document.createElement("canvas");
     c.className = "opt-canvas";
-    c.width = 80;
-    c.height = 80;
-    c.setAttribute("data-index", i); // 用 attribute 存索引，比闭包兼容性好
+    c.width = 80; c.height = 80;
+    c.setAttribute("data-index", i);
     
     var pc = c.getContext("2d");
     pc.fillStyle = "#18183a";
-    pc.fillRect(0, 0, 80, 80);
+    pc.fillRect(0,0,80,80);
     
-    var cx = 40, cy = 40, scale = 0.55;
-    var scaled = [];
-    for (var j = 0; j < od.piece.length; j++) {
-      scaled.push({
-        x: cx + (od.piece[j].x - CENTER.x) * scale,
-        y: cy + (od.piece[j].y - CENTER.y) * scale
-      });
-    }
+    var cx=40, cy=40, scale=0.55;
+    var scaled = od.piece.piece.map(p=>({
+      x:cx + (p.x-CENTER.x)*scale,
+      y:cy + (p.y-CENTER.y)*scale
+    }));
     
     pc.fillStyle = "#e0e0e0";
-    drawPiece(pc, scaled, cx, cy, od.mir ? -scale : scale, scale, od.rot);
+    drawPiece(pc, {...od.piece, piece:scaled}, cx, cy, od.mir?-scale:scale, scale, od.rot);
     pc.fill();
-
-    // 兼容老设备的事件绑定
-    c.onclick = function() { handleChoose(parseInt(this.getAttribute("data-index"))); };
-    c.ontouchstart = function(e) { 
-      e.preventDefault(); // 阻止触摸时页面的默认滚动
-      handleChoose(parseInt(this.getAttribute("data-index"))); 
-    };
     
+    c.onclick = function(){handleChoose(parseInt(this.getAttribute("data-index")));};
+    c.ontouchstart = function(e){e.preventDefault(); handleChoose(parseInt(this.getAttribute("data-index")));};
     optsEl.appendChild(c);
   }
 }
 
-// 选择处理
+// 选择处理+过关鼓励
 function handleChoose(idx) {
   if (state !== "choose") return;
   state = "done";
   var items = document.querySelectorAll(".opt-canvas");
   var msg = document.getElementById("msg");
+  var encourage = document.getElementById("encourage");
   
-  for (var i = 0; i < items.length; i++) {
+  for (var i=0; i<items.length; i++) {
     var item = items[i];
     var dataIdx = parseInt(item.getAttribute("data-index"));
     if (optsData[dataIdx].isAnswer) {
@@ -270,14 +287,19 @@ function handleChoose(idx) {
     } else if (dataIdx === idx) {
       item.className = "opt-canvas wrong";
     }
-    // 移除事件，防止重复点击
     item.onclick = null;
     item.ontouchstart = null;
   }
-
+  
   if (optsData[idx].isAnswer) {
     msg.innerHTML = "✅ 正确！";
     msg.style.color = "#4f4";
+    // 教学关过了给鼓励
+    if (currentLevel === 0) {
+      encourage.innerHTML = "🎉 眼力不错！<br>准备好迎接正式挑战了吗？";
+      encourage.style.display = "block";
+      setTimeout(function(){encourage.style.display="none";}, 2000);
+    }
   } else {
     msg.innerHTML = "❌ 不对，再看看？";
     msg.style.color = "#f44";
@@ -290,8 +312,8 @@ function nextLevel() {
   generateLevel(currentLevel);
 }
 
-// 启动
-generateLevel(0);
+// 初始化
+setTimeout(function(){generateLevel(0);}, 500);
 </script>
 </body>
 </html>
