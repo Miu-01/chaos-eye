@@ -1,642 +1,477 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>👀 眼力大挑战 · Bug修复版</title>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            margin: 0; padding: 0;
-            background: #0c0c1c;
-            color: #fff;
-            font-family: 'Segoe UI', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        .header {
-            width: 100%;
-            padding: 20px;
-            text-align: center;
-            background: linear-gradient(180deg, #1a1a38, #0c0c1c);
-            box-shadow: 0 3px 12px rgba(0,0,0,0.6);
-        }
-        h1 {
-            margin: 0;
-            font-size: 26px;
-            letter-spacing: 2px;
-        }
-        .subtitle {
-            font-size: 13px;
-            opacity: 0.7;
-            margin-top: 6px;
-        }
-        .game-wrap {
-            flex: 1;
-            width: 100%;
-            max-width: 620px;
-            padding: 24px 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .info-row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 16px;
-        }
-        .level-label {
-            background: #ff5a5a;
-            padding: 5px 12px;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        .score-label {
-            background: #28a745;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        .time-label {
-            background: #991111;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .time-warning {
-            animation: flash 0.5s infinite;
-        }
-        @keyframes flash {
-            0% { opacity:1; }
-            50% { opacity:0.2; }
-            100% { opacity:1; }
-        }
-        /* 辨色网格 */
-        .color-grid {
-            display: grid;
-            gap: 6px;
-            margin: 12px 0 24px;
-        }
-        .color-cell {
-            border-radius: 6px;
-            cursor: pointer;
-            transition: transform 0.18s ease;
-            border: 2px solid transparent;
-        }
-        /* 图案画布容器 */
-        .find-pattern-box {
-            position: relative;
-            margin: 12px 0 24px;
-            border: 3px solid #444477;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        #patternCanvas {
-            display: block;
-            cursor: pointer;
-            width: 100%;
-        }
-        .color-cell:hover, #patternCanvas:hover {
-            transform: scale(1.02);
-        }
-        .correct {
-            border-color: #4ce04c !important;
-            box-shadow: 0 0 16px #3f3 !important;
-            animation: pop 0.3s;
-        }
-        .wrong {
-            border-color: #f33 !important;
-            box-shadow: 0 0 16px #f33 !important;
-            animation: shake 0.4s;
-        }
-        .found-mark {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            border: 3px solid #4f4;
-            border-radius: 50%;
-            pointer-events: none;
-            box-shadow: 0 0 10px #3f3;
-        }
-        @keyframes pop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.12); }
-            100% { transform: scale(1); }
-        }
-        @keyframes shake {
-            25% { transform: translateX(-6px); }
-            75% { transform: translateX(6px); }
-        }
-        .msg-text {
-            font-size: 24px;
-            font-weight: bold;
-            height: 32px;
-            margin: 8px 0 20px;
-            text-shadow: 0 0 6px currentColor;
-        }
-        .control-bar {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            flex-wrap: wrap;
-            justify-content: center;
-            padding-bottom: 30px;
-        }
-        button {
-            background: #444477;
-            color: white;
-            border: none;
-            padding: 12px 26px;
-            border-radius: 7px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        button:hover {
-            background: #6060aa;
-        }
-        .tip-text {
-            opacity: 0.6;
-            font-size: 14px;
-            text-align: center;
-        }
-        .modal-hint {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.92);
-            padding: 32px 50px;
-            border-radius: 16px;
-            border: 2px solid #fff;
-            font-size: 28px;
-            display: none;
-            z-index: 999;
-            cursor: pointer;
-            box-shadow: 0 0 60px rgba(255,255,255,0.15);
-            text-align: center;
-        }
-        .modal-hint button {
-            margin-top:20px;
-        }
-        /* 手机适配 */
-        @media(max-width:420px) {
-            h1 { font-size: 20px; }
-            .modal-hint {
-                padding: 20px 24px;
-                font-size: 20px;
-            }
-            .find-pattern-box {
-                width: 100%;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>眼力大挑战｜优化完整版</title>
+<style>
+*{box-sizing: border-box;margin:0;padding:0;}
+body{
+    background:#0c0c1c;color:#fff;font-family:system-ui,Segoe UI,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;
+}
+/* 头部 */
+.header{
+    padding:20px 12px;text-align:center;
+    background:linear-gradient(180deg,#1a1a38,#0c0c1c);
+    box-shadow:0 4px 12px rgba(0,0,0,0.5);
+}
+h1{font-size:26px;letter-spacing:1px;margin-bottom:6px;}
+.subtitle{opacity:0.7;font-size:14px;}
+/* 游戏主体 */
+.game-wrap{
+    flex:1;width:100%;max-width:640px;padding:24px 16px;
+    display:flex;flex-direction:column;align-items:center;
+}
+.info-row{
+    display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:18px;
+}
+.tag{
+    padding:5px 12px;border-radius:8px;font-weight:bold;font-size:14px;
+}
+.score-tag{background:#23a950;}
+.level-tag{background:#ff5252;}
+.time-tag{background:#881010;transition:background 0.3s;}
+.time-yellow{background:#b88200;}
+.time-flash{animation:flash 0.5s infinite;background:#881010;}
+@keyframes flash{0%{opacity:1}50%{opacity:0.2}100%{opacity:1}}
+/* 辨色网格 */
+.color-grid{
+    display:grid;gap:6px;margin:12px 0 24px;
+}
+.color-cell{
+    border-radius:8px;cursor:pointer;
+    transition:transform 0.16s ease,box-shadow 0.2s;
+    border:2px solid transparent;
+}
+.color-cell:active{transform:scale(0.95);}
+.color-cell:hover{transform:scale(1.04);}
+.correct{border-color:#4ce04c;box-shadow:0 0 14px #3f3;animation:pop 0.3s;}
+.wrong{border-color:#f33;box-shadow:0 0 14px #f33;animation:shake 0.4s;}
+@keyframes pop{0%{scale:1}50%{scale:1.12}100%{scale:1}}
+@keyframes shake{25%{translateX:-6px}75%{translateX:6px}}
+/* 图案画布 */
+.pattern-box{
+    position:relative;border:3px solid #444477;border-radius:10px;
+    overflow:hidden;margin:12px 0 24px;width:100%;
+}
+#patternCanvas{display:block;width:100%;cursor:pointer;}
+#patternCanvas:active{transform:scale(0.98);transition:0.1s;}
+.found-mark{
+    position:absolute;width:30px;height:30px;
+    border:3px solid #4f4;border-radius:50%;pointer-events:none;
+    box-shadow:0 0 10px #3f3;
+}
+.msg-text{
+    font-size:24px;font-weight:bold;height:34px;margin:6px 0 20px;
+    text-shadow:0 0 8px currentColor;
+}
+.tip-text{opacity:0.6;font-size:14px;text-align:center;}
+/* 弹窗全局遮罩 */
+.modal-wrap{
+    position:fixed;inset:0;width:100vw;height:100vh;
+    background:rgba(0,0,0,0.9);display:none;z-index:99999;
+    display:flex;align-items:center;justify-content:center;padding:16px;
+}
+.modal-inner{
+    width:min(90%,420px);padding:36px 24px;text-align:center;
+    border:2px solid #fff;border-radius:18px;font-size:26px;
+    box-shadow:0 0 60px rgba(255,255,255,0.12);
+}
+.modal-inner button{
+    margin-top:24px;padding:12px 30px;font-size:16px;font-weight:bold;
+    border:none;border-radius:8px;background:#444477;color:#fff;
+    cursor:pointer;transition:background 0.2s;
+}
+.modal-inner button:hover{background:#6060aa;}
+/* 适配手机 */
+@media(max-width:440px){
+    h1{font-size:20px;}
+    .modal-inner{font-size:20px;padding:24px 16px;}
+}
+</style>
 </head>
 <body>
-    <div class="header">
-        <h1>👀 眼力大挑战 · 灵活限时</h1>
-        <div class="subtitle">每关独立自定义限时，答对自动下一关，答错/超时直接结算</div>
+<div class="header">
+    <h1>👀 眼力大挑战</h1>
+    <div class="subtitle">辨色+找稀有图案｜答错/超时直接结算，答对自动下一关</div>
+</div>
+<div class="game-wrap">
+    <div class="info-row">
+        <div class="tag score-tag" id="scoreTag">得分：0</div>
+        <div class="tag level-tag" id="levelTag">Lv.0 入门·辨色</div>
+        <div class="tag time-tag" id="timeTag">剩余：30s</div>
     </div>
-    <div class="game-wrap">
-        <div class="info-row">
-            <div class="score-label" id="scoreTag">得分：0</div>
-            <div class="level-label" id="levelTag">Lv.0 入门·辨色</div>
-            <div class="time-label" id="timeTag">剩余：30s</div>
-        </div>
-        <!-- 辨色网格 -->
-        <div class="color-grid" id="gridBox"></div>
-        <!-- 找图案画布容器 -->
-        <div class="find-pattern-box" id="patternBox" style="display:none;">
-            <canvas id="patternCanvas"></canvas>
-            <div id="markContainer"></div>
-        </div>
-        <div class="msg-text" id="msgBox"></div>
-        <div class="control-bar">
-            <span class="tip-text" id="tipText">找出唯一一个颜色不同的方块</span>
-        </div>
+    <div class="color-grid" id="gridBox"></div>
+    <div class="pattern-box" id="patternBox" style="display:none;">
+        <canvas id="patternCanvas"></canvas>
+        <div id="markContainer"></div>
     </div>
-    <div class="modal-hint" id="modalTip"></div>
+    <div class="msg-text" id="msgBox"></div>
+    <div class="tip-text" id="tipText"></div>
+</div>
+<!-- 结算弹窗 -->
+<div class="modal-wrap" id="modalWrap">
+    <div class="modal-inner" id="modalContent"></div>
+</div>
 
-    <script>
-        // 关卡配置：timeLimit 每关独立自定义时长，无强制递减
-        const LEVEL_CONFIG = [
-            // Lv0 入门辨色
-            { type:0,name:"入门·辨色",row:2,col:2,hueDiff:40,sat:75,light:55,tip:"找出唯一一个颜色不同的方块",timeLimit:18 },
-            // Lv1 第二关 找2个四叶草（修复点击bug）
-            { type:1,name:"入门·找四叶草",grid:7,basePattern:0,rareCount:2,patternSize:16,tip:"在一堆三叶草里找到2个四叶草",timeLimit:35 },
-            { type:0,name:"简单·辨色",row:3,col:3,hueDiff:22,sat:70,light:52,tip:"色差变小，仔细观察",timeLimit:16 },
-            { type:1,name:"简单·斑点蘑菇",grid:8,basePattern:1,rareCount:2,patternSize:14,tip:"普通蘑菇堆里找出2个带斑点稀有蘑菇",timeLimit:32 },
-            { type:0,name:"普通·辨色",row:4,col:4,hueDiff:12,sat:65,light:50,tip:"色差细微，集中注意力",timeLimit:14 },
-            { type:1,name:"普通·空心星星",grid:9,basePattern:2,rareCount:3,patternSize:12,tip:"实心星星里找出3个空心稀有星",timeLimit:40 },
-            { type:0,name:"困难·辨色",row:5,col:5,hueDiff:6,sat:60,light:48,tip:"色差极小，需要长时间分辨",timeLimit:12 },
-            { type:1,name:"困难·双层爱心",grid:10,basePattern:3,rareCount:3,patternSize:10,tip:"普通爱心堆里找到3个双层稀有爱心",timeLimit:36 },
-            { type:0,name:"大师·辨色",row:6,col:6,hueDiff:3,sat:55,light:46,tip:"几乎同色，考验极限色感",timeLimit:10 },
-            { type:1,name:"大师·混合稀有",grid:11,basePattern:Math.floor(Math.random()*4),rareCount:3,patternSize:8,tip:"海量同类图案，找出全部稀有款",timeLimit:42 },
-            { type:0,name:"极限·辨色",row:7,col:7,hueDiff:1.2,sat:50,light:44,tip:"肉眼很难区分的微弱色差",timeLimit:9 },
-            { type:1,name:"极限·迷你稀有",grid:12,basePattern:Math.floor(Math.random()*4),rareCount:3,patternSize:6,tip:"图案极小，和背景高度融合，找齐3个稀有图案",timeLimit:45 },
-        ];
+<script>
+// 关卡配置：独立自定义时长，灵活调控难度压迫感
+const LEVELS = [
+    {type:0,name:"入门·辨色",row:2,col:2,hueDiff:40,sat:75,light:55,tip:"找出唯一颜色不同方块",timeLimit:18},
+    {type:1,name:"入门·四叶草",grid:7,base:0,rareNum:2,size:16,tip:"在三叶草堆找出2个四叶草",timeLimit:35},
+    {type:0,name:"简单·辨色",row:3,col:3,hueDiff:22,sat:70,light:52,tip:"色差缩小，仔细分辨",timeLimit:16},
+    {type:1,name:"简单·斑点蘑菇",grid:8,base:1,rareNum:2,size:14,tip:"普通蘑菇里找2个斑点蘑菇",timeLimit:32},
+    {type:0,name:"普通·辨色",row:4,col:4,hueDiff:12,sat:65,light:50,tip:"色差细微，集中注意力",timeLimit:14},
+    {type:1,name:"普通·空心星星",grid:9,base:2,rareNum:3,size:12,tip:"实心星星找3个空心星",timeLimit:40},
+    {type:0,name:"困难·辨色",row:5,col:5,hueDiff:6,sat:60,light:48,tip:"色差极小，很难区分",timeLimit:12},
+    {type:1,name:"困难·双层爱心",grid:10,base:3,rareNum:3,size:10,tip:"单层爱心找3个双层爱心",timeLimit:36},
+    {type:0,name:"大师·辨色",row:6,col:6,hueDiff:3,sat:55,light:46,tip:"几乎同色，极限色感考验",timeLimit:10},
+    {type:1,name:"大师·混合图案",grid:11,base:Math.floor(Math.random()*4),rareNum:3,size:8,tip:"海量图案，找出全部稀有款",timeLimit:42},
+    {type:0,name:"极限·辨色",row:7,col:7,hueDiff:1.2,sat:50,light:44,tip:"肉眼几乎看不出色差",timeLimit:9},
+    {type:1,name:"极限·迷你图案",grid:12,base:Math.floor(Math.random()*4),rareNum:3,size:6,tip:"极小图案，极易和背景融合",timeLimit:45},
+];
 
-        let currentLv = 0;
-        let state = "ready";
-        let clickLock = false;
-        let totalScore = 0;
-        // 计时变量
-        let timer = null;
-        let remainTime = 0;
-        // 辨色关卡变量
-        let targetIndex = -1;
-        let baseHue = 0;
-        // 图案关卡全局变量
-        let canvasCtx = null;
-        const canvasFixedSize = 420;
-        let rareTargets = [];
-        let foundCount = 0;
-        let totalRare = 0;
-        let markContainer = null;
+// 全局状态
+let currentLv = 0;
+let gameState = "ready"; // ready / playing / over
+let lockClick = false;
+let totalScore = 0;
+let timer = null;
+let remainSec = 0;
+// 辨色变量
+let targetCellIdx = -1;
+let baseHue = 0;
+// 画布图案变量
+let canvasCtx;
+const CANVAS_STD = 420;
+let rareList = [];
+let foundCnt = 0;
+let totalNeedFind = 0;
+let markWrap;
 
-        // HSL转十六进制颜色
-        function hslToHex(h, s, l) {
-            h /= 360;
-            s /= 100;
-            l /= 100;
-            let r, g, b;
-            if (s === 0) r = g = b = l;
-            else {
-                const hue2rgb = (p, q, t) => {
-                    if(t < 0) t += 1;
-                    if(t > 1) t -= 1;
-                    if(t < 1/6) return p + (q-p)*6*t;
-                    if(t < 1/2) return q;
-                    if(t < 2/3) return p + (q-p)*(2/3-t)*6;
-                    return p;
-                }
-                const q = l < 0.5 ? l*(1+s) : l+s-l*s;
-                const p = 2*l - q;
-                r = hue2rgb(p, q, h + 1/3);
-                g = hue2rgb(p, q, h);
-                b = hue2rgb(p, q, h - 1/3);
+// HSL转16进制颜色
+function hslToHex(h,s,l){
+    h/=360;s/=100;l/=100;
+    const hue2rgb=(p,q,t)=>{
+        if(t<0)t+=1;if(t>1)t-=1;
+        if(t<1/6)return p+(q-p)*6*t;
+        if(t<1/2)return q;
+        if(t<2/3)return p+(q-p)*(2/3-t)*6;
+        return p;
+    }
+    const q = l<0.5 ? l*(1+s) : l+s-l*s;
+    const p = 2*l - q;
+    const r=hue2rgb(p,q,h+1/3),g=hue2rgb(p,q,h),b=hue2rgb(p,q,h-1/3);
+    const toHex=x=>Math.round(x*255).toString(16).padStart(2,"0");
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+// 绘制图案：三叶草/蘑菇/星星/爱心，区分普通&稀有
+function drawShape(ctx,x,y,size,baseType,isRare,hue){
+    ctx.save();
+    ctx.translate(x,y);
+    const rot = Math.random()*Math.PI*2;
+    const scale = 0.86 + Math.random()*0.26;
+    ctx.rotate(rot);
+    ctx.scale(scale,scale);
+    const main = hslToHex(hue,75,38);
+    const light = hslToHex(hue+12,80,52);
+    const dark = hslToHex(hue-10,70,28);
+    ctx.lineWidth=1.2;ctx.strokeStyle="#111";
+    const s=size;
+    switch(baseType){
+        // 0三叶草/稀有四叶草
+        case 0:{
+            const leaf=(lx,ly)=>{
+                ctx.beginPath();
+                ctx.ellipse(lx,ly,s*0.32,s*0.42,0,0,Math.PI*2);
+                ctx.fillStyle=light;ctx.fill();ctx.stroke();
             }
-            const toHex = x => Math.round(x*255).toString(16).padStart(2, "0");
-            return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+            leaf(0,-s*0.35);leaf(-s*0.3,s*0.18);leaf(s*0.3,s*0.18);
+            if(isRare) leaf(0,s*0.32);
+            ctx.beginPath();ctx.moveTo(0,s*0.18);ctx.lineTo(0,s*0.6);
+            ctx.strokeStyle=dark;ctx.lineWidth=2;ctx.stroke();
+            break;
         }
-
-        // 绘制4套基础图案 + 对应稀有变异款
-        function drawPlant(ctx, x, y, size, baseType, isRare, hue) {
-            ctx.save();
-            ctx.translate(x, y);
-            const rotateRad = Math.random() * Math.PI * 2;
-            const scaleRate = 0.88 + Math.random() * 0.24;
-            ctx.rotate(rotateRad);
-            ctx.scale(scaleRate, scaleRate);
-            const mainColor = hslToHex(hue, 75, 38);
-            const lightColor = hslToHex(hue + 12, 80, 52);
-            const darkColor = hslToHex(hue - 10, 70, 28);
-            ctx.lineWidth = 1.2;
-            ctx.strokeStyle = "#111";
-            const s = size;
-
-            switch(baseType) {
-                case 0:
-                    const leaf = (lx, ly) => {
-                        ctx.beginPath();
-                        ctx.ellipse(lx, ly, s*0.32, s*0.42, 0, 0, Math.PI*2);
-                        ctx.fillStyle = lightColor;
-                        ctx.fill();
-                        ctx.stroke();
-                    }
-                    leaf(0, -s*0.35);
-                    leaf(-s*0.3, s*0.18);
-                    leaf(s*0.3, s*0.18);
-                    if(isRare) leaf(0, s*0.32);
-                    ctx.beginPath();
-                    ctx.moveTo(0, s*0.18);
-                    ctx.lineTo(0, s*0.6);
-                    ctx.strokeStyle = darkColor;
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    break;
-                case 1:
-                    ctx.beginPath();
-                    ctx.ellipse(0, -s*0.25, s*0.55, s*0.38, 0, Math.PI, Math.PI*2);
-                    ctx.fillStyle = mainColor;
-                    ctx.fill();
-                    ctx.stroke();
-                    if(isRare) {
-                        ctx.fillStyle = "#fff";
-                        ctx.beginPath();
-                        ctx.arc(-s*0.22, -s*0.32, s*0.09, 0, Math.PI*2);
-                        ctx.arc(s*0.18, -s*0.28, s*0.07, 0, Math.PI*2);
-                        ctx.fill();
-                    }
-                    ctx.fillStyle = lightColor;
-                    ctx.fillRect(-s*0.16, -s*0.02, s*0.32, s*0.55);
-                    ctx.strokeRect(-s*0.16, -s*0.02, s*0.32, s*0.55);
-                    break;
-                case 2:
-                    ctx.beginPath();
-                    for(let i=0;i<5;i++){
-                        const ang = Math.PI/2 + i*Math.PI*2/5;
-                        const px = Math.cos(ang)*s*0.45;
-                        const py = Math.sin(ang)*s*0.45;
-                        i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
-                    }
-                    ctx.closePath();
-                    if(isRare) {
-                        ctx.strokeStyle = mainColor;
-                        ctx.lineWidth = 3;
-                        ctx.stroke();
-                    } else {
-                        ctx.fillStyle = mainColor;
-                        ctx.fill();
-                        ctx.stroke();
-                    }
-                    break;
-                case 3:
-                    ctx.beginPath();
-                    ctx.moveTo(0, s*0.22);
-                    ctx.bezierCurveTo(-s*0.42,-s*0.42,-s*0.82,0,0,s*0.52);
-                    ctx.bezierCurveTo(s*0.82,0,s*0.42,-s*0.42,0,s*0.22);
-                    ctx.fillStyle = mainColor;
-                    ctx.fill();
-                    ctx.stroke();
-                    if(isRare) {
-                        ctx.beginPath();
-                        ctx.moveTo(0, s*0.08);
-                        ctx.bezierCurveTo(-s*0.2,-s*0.18,-s*0.38,0,0,s*0.22);
-                        ctx.bezierCurveTo(s*0.38,0,s*0.2,-s*0.18,0,s*0.08);
-                        ctx.fillStyle = lightColor;
-                        ctx.fill();
-                    }
-                    break;
+        // 1普通蘑菇/斑点蘑菇
+        case 1:{
+            ctx.beginPath();
+            ctx.ellipse(0,-s*0.25,s*0.55,s*0.38,0,Math.PI,Math.PI*2);
+            ctx.fillStyle=main;ctx.fill();ctx.stroke();
+            if(isRare){
+                ctx.fillStyle="#fff";
+                ctx.beginPath();ctx.arc(-s*0.22,-s*0.32,s*0.09,0,Math.PI*2);
+                ctx.arc(s*0.18,-s*0.28,s*0.07,0,Math.PI*2);ctx.fill();
             }
-            ctx.restore();
+            ctx.fillStyle=light;
+            ctx.fillRect(-s*0.16,-s*0.02,s*0.32,s*0.55);
+            ctx.strokeRect(-s*0.16,-s*0.02,s*0.32,s*0.55);
+            break;
         }
-
-        // 清空所有计时器（修复多定时器叠加bug）
-        function stopTimer() {
-            if(timer) clearInterval(timer);
-            timer = null;
+        // 2实心星/空心星
+        case 2:{
+            ctx.beginPath();
+            for(let i=0;i<5;i++){
+                const ang = Math.PI/2 + i*Math.PI*2/5;
+                const px = Math.cos(ang)*s*0.45,py=Math.sin(ang)*s*0.45;
+                i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+            }
+            ctx.closePath();
+            if(isRare){ctx.strokeStyle=main;ctx.lineWidth=3;ctx.stroke();}
+            else{ctx.fillStyle=main;ctx.fill();ctx.stroke();}
+            break;
         }
-
-        // 启动倒计时
-        function startTimer(sec) {
-            stopTimer();
-            remainTime = sec;
-            updateTimeUI();
-            timer = setInterval(()=>{
-                remainTime--;
-                updateTimeUI();
-                // 超时判定，强制结束游戏
-                if(remainTime <= 0) {
-                    stopTimer();
-                    if(state === "playing") {
-                        state = "timeout";
-                        clickLock = true;
-                        document.getElementById("msgBox").innerText = "⏰ 时间耗尽，挑战结束";
-                        document.getElementById("msgBox").style.color = "#f44";
-                        setTimeout(gameOver, 800);
-                    }
-                }
-            }, 1000);
+        //3单层爱心/双层爱心
+        case 3:{
+            ctx.beginPath();
+            ctx.moveTo(0,s*0.22);
+            ctx.bezierCurveTo(-s*0.42,-s*0.42,-s*0.82,0,0,s*0.52);
+            ctx.bezierCurveTo(s*0.82,0,s*0.42,-s*0.42,0,s*0.22);
+            ctx.fillStyle=main;ctx.fill();ctx.stroke();
+            if(isRare){
+                ctx.beginPath();ctx.moveTo(0,s*0.08);
+                ctx.bezierCurveTo(-s*0.2,-s*0.18,-s*0.38,0,0,s*0.22);
+                ctx.bezierCurveTo(s*0.38,0,s*0.2,-s*0.18,0,s*0.08);
+                ctx.fillStyle=light;ctx.fill();
+            }
+            break;
         }
+    }
+    ctx.restore();
+}
 
-        // 更新倒计时显示 + 5秒闪烁警告
-        function updateTimeUI() {
-            const timeDom = document.getElementById("timeTag");
-            timeDom.innerText = `剩余：${remainTime}s`;
-            if(remainTime <=5) {
-                timeDom.classList.add("time-warning");
-            } else {
-                timeDom.classList.remove("time-warning");
+// 计时器统一销毁
+function clearTimer(){
+    if(timer) clearInterval(timer);
+    timer=null;
+}
+
+// 启动倒计时+动态变色标签
+function startTimer(sec){
+    clearTimer();
+    remainSec=sec;
+    updateTimeText();
+    timer=setInterval(()=>{
+        remainSec--;
+        updateTimeText();
+        if(remainSec<=0){
+            clearTimer();
+            if(gameState==="playing"){
+                gameState="over";lockClick=true;
+                document.getElementById("msgBox").innerText="⏰ 时间耗尽，挑战结束";
+                document.getElementById("msgBox").style.color="#f44";
+                gameOver();
             }
         }
+    },1000);
+}
 
-        // 生成辨色关卡
-        function createColorLevel(cfg) {
-            stopTimer();
-            document.getElementById("gridBox").style.display = "grid";
-            document.getElementById("patternBox").style.display = "none";
-            state = "playing";
-            clickLock = false;
-            document.getElementById("levelTag").innerText = `Lv.${currentLv} ${cfg.name}`;
-            document.getElementById("tipText").innerText = cfg.tip;
-            document.getElementById("msgBox").innerText = "";
-            document.getElementById("msgBox").style.color = "#fff";
-            const gridWrap = document.getElementById("gridBox");
-            gridWrap.innerHTML = "";
-            gridWrap.style.gridTemplateRows = `repeat(${cfg.row}, 1fr)`;
-            gridWrap.style.gridTemplateColumns = `repeat(${cfg.col}, 1fr)`;
-            const cellMax = Math.min(48, Math.floor(540 / Math.max(cfg.row, cfg.col)));
-            baseHue = Math.floor(Math.random() * 360);
-            const total = cfg.row * cfg.col;
-            targetIndex = Math.floor(Math.random() * total);
-            for(let i = 0; i < total; i++) {
-                const cell = document.createElement("div");
-                cell.className = "color-cell";
-                cell.style.width = `${cellMax}px`;
-                cell.style.height = `${cellMax}px`;
-                let color;
-                if(i === targetIndex) {
-                    const offset = Math.random() > 0.5 ? cfg.hueDiff : -cfg.hueDiff;
-                    color = hslToHex(baseHue + offset, cfg.sat, cfg.light);
-                } else {
-                    color = hslToHex(baseHue, cfg.sat, cfg.light);
-                }
-                cell.style.background = color;
-                cell.dataset.id = i;
-                cell.onclick = () => handleColorClick(i);
-                gridWrap.appendChild(cell);
-            }
-            startTimer(cfg.timeLimit);
+// 倒计时文字&颜色更新
+function updateTimeText(){
+    const dom=document.getElementById("timeTag");
+    dom.innerText=`剩余：${remainSec}s`;
+    dom.classList.remove("time-yellow","time-flash");
+    if(remainSec<=5) dom.classList.add("time-flash");
+    else if(remainSec<=12) dom.classList.add("time-yellow");
+}
+
+// 弹出结算弹窗
+function showModal(html){
+    const wrap=document.getElementById("modalWrap");
+    const content=document.getElementById("modalContent");
+    content.innerHTML=html;
+    wrap.style.display="flex";
+}
+
+// 关闭弹窗（点击遮罩空白处）
+document.getElementById("modalWrap").addEventListener("click",e=>{
+    if(e.target.id==="modalWrap") document.getElementById("modalWrap").style.display="none";
+})
+
+// 生成辨色关卡
+function renderColorStage(cfg){
+    clearTimer();
+    gameState="playing";lockClick=false;
+    document.getElementById("gridBox").style.display="grid";
+    document.getElementById("patternBox").style.display="none";
+    document.getElementById("levelTag").innerText=`Lv.${currentLv} ${cfg.name}`;
+    document.getElementById("tipText").innerText=cfg.tip;
+    document.getElementById("msgBox").innerText="";
+    document.getElementById("msgBox").style.color="#fff";
+    const grid=document.getElementById("gridBox");
+    grid.innerHTML="";
+    grid.style.gridTemplateRows=`repeat(${cfg.row},1fr)`;
+    grid.style.gridTemplateColumns=`repeat(${cfg.col},1fr)`;
+    const cellMax=Math.min(48,Math.floor(540/Math.max(cfg.row,cfg.col)));
+    baseHue=Math.floor(Math.random()*360);
+    const total=cfg.row*cfg.col;
+    targetCellIdx=Math.floor(Math.random()*total);
+    for(let i=0;i<total;i++){
+        const div=document.createElement("div");
+        div.className="color-cell";
+        div.style.width=`${cellMax}px`;
+        div.style.height=`${cellMax}px`;
+        const offset = Math.random()>0.5 ? cfg.hueDiff : -cfg.hueDiff;
+        div.style.background = i===targetCellIdx ? hslToHex(baseHue+offset,cfg.sat,cfg.light) : hslToHex(baseHue,cfg.sat,cfg.light);
+        div.onclick=()=>clickColorCell(i);
+        grid.appendChild(div);
+    }
+    startTimer(cfg.timeLimit);
+}
+
+// 生成找图案关卡
+function renderPatternStage(cfg){
+    clearTimer();
+    gameState="playing";lockClick=false;
+    foundCnt=0;rareList=[];
+    markWrap=document.getElementById("markContainer");
+    markWrap.innerHTML="";
+    document.getElementById("gridBox").style.display="none";
+    document.getElementById("patternBox").style.display="block";
+    document.getElementById("levelTag").innerText=`Lv.${currentLv} ${cfg.name}`;
+    document.getElementById("tipText").innerText=cfg.tip;
+    document.getElementById("msgBox").innerText=`已找到：0/${cfg.rareNum}`;
+    document.getElementById("msgBox").style.color="#fff";
+    totalNeedFind=cfg.rareNum;
+    const canvas=document.getElementById("patternCanvas");
+    canvas.width=CANVAS_STD;canvas.height=CANVAS_STD;
+    canvasCtx=canvas.getContext("2d");
+    const cellNum=cfg.grid;
+    const cellSize=CANVAS_STD/cellNum;
+    baseHue=Math.floor(Math.random()*140)+60;
+    const usedPos=new Set();
+    // 随机生成稀有图案坐标
+    while(rareList.length < totalNeedFind){
+        const rx=Math.floor(Math.random()*cellNum);
+        const ry=Math.floor(Math.random()*cellNum);
+        const key=`${rx}-${ry}`;
+        if(!usedPos.has(key)){
+            usedPos.add(key);
+            rareList.push({x:rx*cellSize+cellSize/2,y:ry*cellSize+cellSize/2,cx:rx,cy:ry});
         }
-
-        // 生成海量同类图案关卡 + 修复画布坐标点击bug
-        function createFindPatternLevel(cfg) {
-            stopTimer();
-            document.getElementById("gridBox").style.display = "none";
-            document.getElementById("patternBox").style.display = "block";
-            state = "playing";
-            clickLock = false;
-            foundCount = 0;
-            rareTargets = [];
-            markContainer = document.getElementById("markContainer");
-            markContainer.innerHTML = "";
-            document.getElementById("levelTag").innerText = `Lv.${currentLv} ${cfg.name}`;
-            document.getElementById("tipText").innerText = cfg.tip;
-            document.getElementById("msgBox").innerText = `已找到：0/${cfg.rareCount}`;
-            document.getElementById("msgBox").style.color = "#fff";
-            totalRare = cfg.rareCount;
-            const canvas = document.getElementById("patternCanvas");
-            canvas.width = canvasFixedSize;
-            canvas.height = canvasFixedSize;
-            canvasCtx = canvas.getContext("2d");
-            const gridCellNum = cfg.grid;
-            const cellSize = canvasFixedSize / gridCellNum;
-            baseHue = Math.floor(Math.random() * 140) + 60;
-            const usedPos = new Set();
-            // 随机生成稀有图案坐标
-            while(rareTargets.length < totalRare) {
-                const rx = Math.floor(Math.random() * gridCellNum);
-                const ry = Math.floor(Math.random() * gridCellNum);
-                const key = `${rx}-${ry}`;
-                if(!usedPos.has(key)) {
-                    usedPos.add(key);
-                    rareTargets.push({
-                        x: rx * cellSize + cellSize/2,
-                        y: ry * cellSize + cellSize/2,
-                        cellX: rx,
-                        cellY: ry
-                    });
-                }
-            }
-            // 绘制全部格子与图案
-            for(let x=0;x<gridCellNum;x++){
-                for(let y=0;y<gridCellNum;y++){
-                    const cx = x * cellSize + cellSize/2;
-                    const cy = y * cellSize + cellSize/2;
-                    const isRare = usedPos.has(`${x}-${y}`);
-                    const bgHue = baseHue + (Math.random()-0.5)*4;
-                    canvasCtx.fillStyle = hslToHex(bgHue, 22, 16);
-                    canvasCtx.fillRect(x*cellSize, y*cellSize, cellSize, cellSize);
-                    drawPlant(canvasCtx, cx, cy, cfg.patternSize, cfg.basePattern, isRare, baseHue);
-                }
-            }
-            // 修复画布坐标换算逻辑
-            canvas.onclick = function(e) {
-                if(state !== "playing" || clickLock) return;
-                const rect = canvas.getBoundingClientRect();
-                // 标准正确坐标映射
-                const canvasClickX = (e.clientX - rect.left) * canvas.width / rect.width;
-                const canvasClickY = (e.clientY - rect.top) * canvas.height / rect.height;
-                let hitTarget = null;
-                // 检测是否命中稀有图案
-                for(let t of rareTargets) {
-                    const dist = Math.hypot(canvasClickX - t.x, canvasClickY - t.y);
-                    if(dist < cellSize / 2) {
-                        hitTarget = t;
-                        break;
-                    }
-                }
-                handlePatternClick(hitTarget, e.clientX - rect.left, e.clientY - rect.top);
-            }
-            startTimer(cfg.timeLimit);
+    }
+    // 绘制全部格子
+    for(let x=0;x<cellNum;x++){
+        for(let y=0;y<cellNum;y++){
+            const cx=x*cellSize+cellSize/2,cy=y*cellSize+cellSize/2;
+            const isRare=usedPos.has(`${x}-${y}`);
+            const bgH=baseHue + (Math.random()-0.5)*4;
+            canvasCtx.fillStyle=hslToHex(bgH,22,16);
+            canvasCtx.fillRect(x*cellSize,y*cellSize,cellSize,cellSize);
+            drawShape(canvasCtx,cx,cy,cfg.size,cfg.base,isRare,baseHue);
         }
-
-        // 辨色方块点击
-        function handleColorClick(idx) {
-            if(state !== "playing" || clickLock) return;
-            clickLock = true;
-            stopTimer();
-            const allCells = document.querySelectorAll(".color-cell");
-            const msgDom = document.getElementById("msgBox");
-            if(idx === targetIndex) {
-                allCells[targetIndex].classList.add("correct");
-                msgDom.innerText = "✅ 找对了！自动进入下一关";
-                msgDom.style.color = "#4f4";
-                totalScore += 1;
-                updateScoreUI();
-                setTimeout(autoNext, 1200);
-            } else {
-                allCells[idx].classList.add("wrong");
-                allCells[targetIndex].classList.add("correct");
-                msgDom.innerText = "❌ 答错，本局结束";
-                msgDom.style.color = "#f44";
-                setTimeout(gameOver, 1000);
-            }
+    }
+    // 画布点击监听
+    canvas.onclick=e=>{
+        if(gameState!=="playing"||lockClick)return;
+        const rect=canvas.getBoundingClientRect();
+        const cX=(e.clientX-rect.left)*canvas.width/rect.width;
+        const cY=(e.clientY-rect.top)*canvas.height/rect.height;
+        let hit=null;
+        const hitRange=cellSize/1.4;
+        for(let item of rareList){
+            const dist=Math.hypot(cX-item.x,cY-item.y);
+            if(dist<hitRange){hit=item;break;}
         }
+        clickPattern(hit,e.clientX-rect.left,e.clientY-rect.top);
+    }
+    startTimer(cfg.timeLimit);
+}
 
-        // 图案画布点击逻辑
-        function handlePatternClick(hitTarget, clickScreenX, clickScreenY) {
-            if(state !== "playing" || clickLock) return;
-            const msgDom = document.getElementById("msgBox");
-            if(hitTarget) {
-                // 移除已找到的稀有，避免重复点击
-                rareTargets = rareTargets.filter(item => !(item.cellX === hitTarget.cellX && item.cellY === hitTarget.cellY));
-                foundCount++;
-                // 绘制绿色标记圈
-                const mark = document.createElement("div");
-                mark.className = "found-mark";
-                mark.style.left = (clickScreenX - 15) + "px";
-                mark.style.top = (clickScreenY - 15) + "px";
-                markContainer.appendChild(mark);
-                msgDom.innerText = `✅ 找到一个！进度：${foundCount}/${totalRare}`;
-                msgDom.style.color = "#4f4";
-                // 全部找齐自动跳关
-                if(foundCount >= totalRare) {
-                    state = "answered";
-                    clickLock = true;
-                    stopTimer();
-                    totalScore += 1;
-                    updateScoreUI();
-                    msgDom.innerText = "✅ 全部找齐！自动进入下一关";
-                    setTimeout(autoNext, 1200);
-                }
-            } else {
-                // 点空白区域直接失败
-                state = "answered";
-                clickLock = true;
-                stopTimer();
-                msgDom.innerText = `❌ 这里没有稀有图案，本局结束`;
-                msgDom.style.color = "#f44";
-                setTimeout(gameOver, 1000);
-            }
+// 点击色块逻辑
+function clickColorCell(idx){
+    if(gameState!=="playing"||lockClick)return;
+    lockClick=true;clearTimer();
+    const cells=document.querySelectorAll(".color-cell");
+    const msg=document.getElementById("msgBox");
+    if(idx===targetCellIdx){
+        cells[targetCellIdx].classList.add("correct");
+        msg.innerText="✅ 找对了！自动进入下一关";
+        msg.style.color="#4f4";
+        totalScore++;updateScore();
+        // 全部通关弹窗
+        if(currentLv >= LEVELS.length-1){
+            showModal(`🏆 全部关卡通关<br>本局总分：${totalScore}<br><button onclick="restartGame()">重新开局</button>`);
+            return;
         }
+        setTimeout(nextStage,1200);
+    }else{
+        cells[idx].classList.add("wrong");
+        cells[targetCellIdx].classList.add("correct");
+        msg.innerText="❌ 选错，本局结束";
+        msg.style.color="#f44";
+        gameOver();
+    }
+}
 
-        // 自动进入下一关
-        function autoNext() {
-            currentLv++;
-            if(currentLv >= LEVEL_CONFIG.length) {
-                showModal(`🏆 全部关卡通关！本局总分：${totalScore}<br><button onclick="restartGame()">重新开始</button>`);
+// 点击画布图案
+function clickPattern(hitItem,screenX,screenY){
+    if(gameState!=="playing"||lockClick)return;
+    const msg=document.getElementById("msgBox");
+    if(hitItem){
+        // 移除已找到稀有，避免重复计数
+        rareList=rareList.filter(i=>!(i.cx===hitItem.cx&&i.cy===hitItem.cy));
+        foundCnt++;
+        // 绘制标记圈
+        const mark=document.createElement("div");
+        mark.className="found-mark";
+        mark.style.left=`${screenX-15}px`;
+        mark.style.top=`${screenY-15}px`;
+        markWrap.appendChild(mark);
+        msg.innerText=`✅ 找到一个！进度：${foundCnt}/${totalNeedFind}`;
+        msg.style.color="#4f4";
+        if(foundCnt>=totalNeedFind){
+            lockClick=true;clearTimer();
+            totalScore++;updateScore();
+            msg.innerText="✅ 全部找齐！自动进入下一关";
+            if(currentLv >= LEVELS.length-1){
+                showModal(`🏆 全部关卡通关<br>本局总分：${totalScore}<br><button onclick="restartGame()">重新开局</button>`);
                 return;
             }
-            const cfg = LEVEL_CONFIG[currentLv];
-            if(cfg.type === 0){
-                createColorLevel(cfg);
-            }else{
-                createFindPatternLevel(cfg);
-            }
+            setTimeout(nextStage,1200);
         }
+    }else{
+        lockClick=true;clearTimer();
+        msg.innerText="❌ 这里没有稀有图案，本局结束";
+        msg.style.color="#f44";
+        gameOver();
+    }
+}
 
-        // 游戏失败结算（答错/超时统一调用）
-        function gameOver() {
-            stopTimer();
-            showModal(`💔 挑战失败<br>本局得分：${totalScore}<br><button onclick="restartGame()">重新开局</button>`);
-        }
+// 切换下一关
+function nextStage(){
+    currentLv++;
+    const cfg=LEVELS[currentLv];
+    cfg.type===0 ? renderColorStage(cfg) : renderPatternStage(cfg);
+}
 
-        // 重新开局，分数、关卡、计时全部重置
-        function restartGame() {
-            stopTimer();
-            totalScore = 0;
-            currentLv = 0;
-            updateScoreUI();
-            document.getElementById("modalTip").style.display = "none";
-            const cfg = LEVEL_CONFIG[0];
-            if(cfg.type === 0){
-                createColorLevel(cfg);
-            }else{
-                createFindPatternLevel(cfg);
-            }
-        }
+// 游戏失败结算
+function gameOver(){
+    gameState="over";
+    showModal(`💔 挑战失败<br>本局得分：${totalScore}<br><button onclick="restartGame()">重新开局</button>`);
+}
 
-        // 更新分数显示
-        function updateScoreUI() {
-            document.getElementById("scoreTag").innerText = `得分：${totalScore}`;
-        }
+// 重新开局，全部重置
+function restartGame(){
+    clearTimer();
+    totalScore=0;currentLv=0;
+    updateScore();
+    document.getElementById("modalWrap").style.display="none";
+    const cfg=LEVELS[0];
+    cfg.type===0 ? renderColorStage(cfg) : renderPatternStage(cfg);
+}
 
-        window.onload = () => {
-            const cfg = LEVEL_CONFIG[0];
-            createColorLevel(cfg);
-        }
-    </script>
+// 更新分数UI
+function updateScore(){
+    document.getElementById("scoreTag").innerText=`得分：${totalScore}`;
+}
+
+// 页面初始化
+window.onload=()=>{
+    const cfg=LEVELS[0];
+    cfg.type===0 ? renderColorStage(cfg) : renderPatternStage(cfg);
+}
+</script>
 </body>
 </html>
